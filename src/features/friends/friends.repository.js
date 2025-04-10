@@ -12,7 +12,38 @@ export default class FriendsRepository {
 
     async getAllFriends(userId, level) {
         if(level){
-            let friendsDoc = await FriendsModel.findOne({userId: userId})
+            let friendsDoc = await FriendsModel.aggregate([
+                {
+                    $match :  {
+                        userId : mongoose.Types.ObjectId(userId)
+                    }
+                },
+                {
+                    $unwind : "$friends"
+                },
+                {
+                    $match : {
+                        "friends.level" : level
+                    }
+                },
+                {
+                    $lookup : {
+                        from : "users",
+                        localField : "friends.friendId",
+                        foreignField : "_id",
+                        as : "friendsDetails"
+                    }
+                },
+                {
+                    $unwind : "$friendsDetails"
+                },
+                {
+                    $replaceRoot : {
+                        newRoot : "$friendsDetails"
+                    }
+                }
+            ]);
+
         }
     }
 }
