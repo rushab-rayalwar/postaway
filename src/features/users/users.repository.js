@@ -7,6 +7,7 @@ import bcrypt from "bcrypt";
 //custom
 import {UserModel} from "./users.schema.js";
 import { ApplicationError } from "../../middlewares/errorHandler.middleware.js"; 
+import FriendsModel from "../friends/friends.schema.js";
 
 export default class UsersRepository {
     constructor(){
@@ -15,13 +16,17 @@ export default class UsersRepository {
     async signUp(userData){
         try{
             userData.password = await bcrypt.hash(userData.password, 10); // hashes password before saving to the database
-            let newUser = new UserModel(userData); 
+            let newUser = new UserModel(userData);
+            let friendList = new FriendsModel({
+                userId : newUser._id
+            });
+            newUser.
             await newUser.save();
             let data = {
                 _id: newUser._id,
                 email: newUser.email
             }
-            return {success:true, data, statusCode:201}
+            return {success:true, data, statusCode:201, message:"User created successfully."}
         } catch(error) {
             if(error.name == "ValidationError"){
                 let errorMessages = Object.values(error.errors).map(e=>e.message);
@@ -49,7 +54,7 @@ export default class UsersRepository {
                 email: user.email,
                 tokenVersion : user.tokenVersion
             }
-            return {success:true, data, statusCode:200}
+            return {success:true, data, statusCode:200, message:"User logged in successfully."}
         } catch(error) {  
             console.error("Error caught in the catch block - "+error);
             throw new ApplicationError(500,"Could not login the user, something went wrong!");
@@ -60,7 +65,7 @@ export default class UsersRepository {
             let user = await UserModel.findById(userId);
             user.tokenVersion += 1; // increment the token version to invalidate all previous tokens
             await user.save();
-            return {success:true, message:"Logged out from all devices successfully."}
+            return {success:true, message:"Logged out from all devices successfully.", data:null, statusCode:200}
         } catch(error){
             console.error("Error caught in the catch block - "+error);
             throw new ApplicationError(500,"Something went wrong!")

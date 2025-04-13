@@ -29,6 +29,21 @@ export default class FriendsController {
     async getRequests(req,res,next){
         let userId = req.user._id;
         let response = await this.friendsRepository.getRequests(userId);
-        
+        if(response.success){
+            return res.status(response.statusCode).json({
+                success: response.success,
+                data: response.data
+            });
+        } else {
+            return res.status(response.statusCode).json({
+                success: response.success,
+                errors: [response.errors]
+            });
+        }
+    }
+    async toggleFriend(req,res,next){
+        let userId = req.user._id;
+        let friendId = req.params.friendId;
+        let response = await FriendsRepository.toggleFriend(userId, friendId);
     }
 }
