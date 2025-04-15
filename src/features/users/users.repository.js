@@ -17,11 +17,13 @@ export default class UsersRepository {
         try{
             userData.password = await bcrypt.hash(userData.password, 10); // hashes password before saving to the database
             let newUser = new UserModel(userData);
-            let friendList = new FriendsModel({
+            let friendsList = new FriendsModel({
                 userId : newUser._id
             });
-            newUser.
+            newUser.friendsList = mongoose.Types.ObjectId(friendsList._id);
+            await friendsList.save();
             await newUser.save();
+            
             let data = {
                 _id: newUser._id,
                 email: newUser.email

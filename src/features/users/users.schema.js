@@ -15,12 +15,10 @@ const usersSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    friendList : [
-        {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "FriendsList"
-        }
-    ]
+    friendsList : {
+        type : mongoose.Schema.Types.ObjectId,
+        ref: "FriendsList"
+    }
 },{ collection : "users", timeStamps : true });
 
 const UserModel = mongoose.model("User",usersSchema);

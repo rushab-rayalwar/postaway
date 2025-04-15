@@ -41,9 +41,15 @@ export default class FriendsController {
             });
         }
     }
-    async toggleFriend(req,res,next){
+    async toggleFriendship(req,res,next){
         let userId = req.user._id;
         let friendId = req.params.friendId;
-        let response = await FriendsRepository.toggleFriend(userId, friendId);
+        let response = await this.friendsRepository.toggleFriendship(userId, friendId);
+    }
+    async respondToRequest(req,res,next){
+        let userId = req.user._id;
+        let friendId = req.params.friendId;
+        let action = req.params.action;
+        let response = await this.friendsRepository.respondToFriend(userId, friendId, action);
     }
 }
