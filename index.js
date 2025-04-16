@@ -11,6 +11,7 @@ import cookieParser from "cookie-parser";
 
 import usersRouter from "./src/features/users/users.router.js";
 import friendsRouter from "./src/features/friends/friends.router.js";
+import postsRouter from "./src/features/posts/posts.router.js";
 
 //middlewares
 server.use(express.json());
@@ -20,6 +21,7 @@ server.use(cookieParser());
 //routes
 server.use("/api/users",usersRouter);
 server.use("/api/friends",friendsRouter);
+server.use("/api/posts",postsRouter);
 
 // middlewares
 server.use(handleError);
