@@ -15,6 +15,7 @@ export default class PostsController {
     }
     async createPost(req,res,next){
         let userId = req.user._id;
-        
+        let postContent = req.body.content;
+        let response = await this.postsRepository.cretatePost(userId, postContent);
     }
 }
