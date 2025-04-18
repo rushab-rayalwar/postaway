@@ -4,6 +4,7 @@
 import express from "express";
 import jwtAuthenticator from "../../middlewares/jwtAuthenticator";
 import saveImageToMemory from "../../config/multer.config";
+import uploadToCloudinary from "../../middlewares/cloudinaryUploader";
 
 // custom
 import PostsController from "./posts.controller";

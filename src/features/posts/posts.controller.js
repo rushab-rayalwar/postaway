@@ -14,8 +14,9 @@ export default class PostsController {
         let userId = req.user._id;
     }
     async createPost(req,res,next){
-        let userId = req.user._id;
-        let postContent = req.body.content;
-        let response = await this.postsRepository.cretatePost(userId, postContent);
+        const userId = req.user._id;
+        const imagePublicId = req.image.imagePublicId;
+        const imageUrl = req.image.secure_url;
+        let response = await this.postsRepository.createPost(userId, imageUrl, imagePublicId);
     }
 }
