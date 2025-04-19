@@ -5,7 +5,7 @@ import mongoose from "mongoose";
 
 //custom
 
-const postsSchema = new mongoose.Schema({
+export const postsSchema = new mongoose.Schema({
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         required:[true, "User ID of the post not specified"],
@@ -51,4 +51,4 @@ const postsSchema = new mongoose.Schema({
     timestamps: true
 });
 
-const PostModel = mongoose.model("Post",postsSchema);
+export const PostModel = mongoose.model("Post",postsSchema);
