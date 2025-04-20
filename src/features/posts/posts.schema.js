@@ -13,7 +13,7 @@ export const postsSchema = new mongoose.Schema({
     },
     content : {
         type : String,
-        default : ""
+        default : "" // trim and process
     },
     image : {
         type : {
@@ -45,7 +45,20 @@ export const postsSchema = new mongoose.Schema({
             }
         ],
         default : []
-    }
+    },
+    visibility: {
+        type: [
+            {
+                type: String,
+                enum : {
+                    values : ["everyone", "general","close_friend","inner_circle"], // a post can be set to be visible to everyone, or to a specific group of people, or even to a combination of groups
+                    message : "Invalid visibility parameter"
+                }
+            }
+        ],
+        default: ["everyone"]
+    },
+    recentComment : {},
 },
 {
     timestamps: true

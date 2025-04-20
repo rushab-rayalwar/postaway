@@ -21,7 +21,10 @@ const friendsSchema = new mongoose.Schema({
             },
             level : {
                 type: String,
-                enum: ["general","close_friend","inner_circle"],
+                enum: {
+                    values : ["general","close_friend","inner_circle"],
+                    message : "Invalid friend level"
+                },
                 default: "general"
             },
             since: {
