@@ -57,8 +57,8 @@ export const postsSchema = new mongoose.Schema({
             }
         ],
         default: ["everyone"]
-    },
-    recentComment : {},
+    }
+    //recentComment : {},
 },
 {
     timestamps: true

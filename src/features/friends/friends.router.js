@@ -4,8 +4,8 @@
 import express from "express";
 
 //custom
-import jwtAuthenticator from "../../middlewares/jwtAuthenticator";
-import FriendsController from "./friends.controller";
+import jwtAuthenticator from "../../middlewares/jwtAuthenticator.js";
+import FriendsController from "./friends.controller.js";
 
 const friendsController = new FriendsController();
 

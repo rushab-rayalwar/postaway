@@ -1,7 +1,7 @@
 //core
 
 //third-party
-import FriendsRepository from "./friends.repository";
+import FriendsRepository from "./friends.repository.js";
 
 //custom
 

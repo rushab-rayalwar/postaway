@@ -5,12 +5,12 @@ import multer from "multer";
 import streamifier from "streamifier";
 
 // custom
-import { cloudinary } from "../config/cloudinary.config";
+import { cloudinary } from "../config/cloudinary.config.js";
  
 export default async function uploadToCloudinary(req, res, next) {
     try {
         if(!req.file){
-            next();
+            return next();
         }
         let uploadPromise = new Promise(
         (resolve,reject)=>{

@@ -12,15 +12,19 @@ export default class PostsController {
     }
 
     async getPostById(req, res, next) {
-        let userId = req.user._id;
+        let userId = req.user.userId;
         let response = await this.postsRepository.getPostById(userId, postId);
     }
-    async createPost(req,res,next){
-        const userId = req.user._id;
 
-        const imagePublicId = req.image.imagePublicId; //these are optional
+    
+    async createPost(req,res,next){
+        const userId = req.user.userId; console.log("UserId in controller", userId);
+
+        const imagePublicId = req.image.public_id; //these are optional
         const imageUrl = req.image.secure_url;
         
+        console.log("imagePublicId -", imagePublicId,", imageUrl -", imageUrl);
+
         const content = req.body.content;
         
 

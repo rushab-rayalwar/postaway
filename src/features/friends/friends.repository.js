@@ -18,7 +18,7 @@ export default class FriendsRepository {
                 let friendsDoc = await FriendsModel.aggregate([
                     {
                         $match :  {
-                            userId : mongoose.Types.ObjectId(userId)
+                            userId : new mongoose.Types.ObjectId(userId)
                         }
                     },
                     {
@@ -51,7 +51,7 @@ export default class FriendsRepository {
                 let friends = await FriendsModel.aggregate([
                     {
                         $match : {
-                            userId : mongoose.Types.ObjectId(userId)
+                            userId : new mongoose.Types.ObjectId(userId)
                         }
                     },
                     {
@@ -63,7 +63,7 @@ export default class FriendsRepository {
                 return { success:true, data: friends, statusCode: 200}
             }
         } catch(err){
-            console.error("Error caught in the catch block - "+error);
+            console.error("Error caught in the catch block - "+err);
             throw new ApplicationError(500,"Something went wrong!")
         }
     }
@@ -72,7 +72,7 @@ export default class FriendsRepository {
             let requests = await FriendsModel.aggregate([
                 {
                     $match : {
-                        userId : mongoose.Types.ObjectId(userId)
+                        userId : new mongoose.Types.ObjectId(userId)
                     }
                 },
                 {
@@ -130,7 +130,7 @@ export default class FriendsRepository {
             let friendIndex = friendsList.friends.findIndex(f=>f.friendId == friendId);
             if(friendIndex < 0){ // not a friend already, send a request
                 let friendRequest = {
-                    from : mongoose.Types.ObjectId(userId), 
+                    from : new mongoose.Types.ObjectId(userId), 
                     sentOn : Date.now()
                 };
                 let friendsListForFriend = await FriendsModel.findOne({userId : friendId}).session(session); // no need to check if it exists, as it is created when the user is created
@@ -191,7 +191,7 @@ export default class FriendsRepository {
             }
             if(action == "accept"){
                 let newFriendForUser = {
-                    friendId : mongoose.Types.ObjectId(friendId),
+                    friendId : new mongoose.Types.ObjectId(friendId),
                     level : "general",
                     since : Date.now()
                 };
@@ -204,7 +204,7 @@ export default class FriendsRepository {
                     throw new ApplicationError(404, "Friends list not found for the friend");
                 }
                 let newFriendForFriend = {
-                    friendId : mongoose.Types.ObjectId(userId),
+                    friendId : new mongoose.Types.ObjectId(userId),
                     level : "general",
                     since : Date.now()
                 };

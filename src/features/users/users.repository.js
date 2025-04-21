@@ -20,7 +20,7 @@ export default class UsersRepository {
             let friendsList = new FriendsModel({
                 userId : newUser._id
             });
-            newUser.friendsList = mongoose.Types.ObjectId(friendsList._id);
+            newUser.friendsList = new mongoose.Types.ObjectId(friendsList._id);
             await friendsList.save();
             await newUser.save();
             
