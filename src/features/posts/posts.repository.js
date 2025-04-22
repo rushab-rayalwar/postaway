@@ -44,6 +44,20 @@ export default class PostsRepository {
         }
     }
     async createPost(userId, imageUrl, imagePublicId, content, visibility){
+        
+        
+        let vis = visibility || ["everyone"]; // "visibility" is a space-separated string provided via query param.
+                                            // If not provided, default to ["everyone"]. Convert to array and validate.
+        const validVisibilityOptions = ["everyone", "general","close_friend","inner_circle"];
+        if(!Array.isArray(vis)) {
+            vis = vis.trim().split(" ");
+            for(let option of vis){
+                if(!validVisibilityOptions.includes(option)){
+                    return {success: false, statusCode: 400, errors:["Visibility options are invalid"]}
+                }
+            }
+        }
+
         try {
             let user = await UserModel.findById(userId);
             if(!user){
@@ -57,12 +71,14 @@ export default class PostsRepository {
                     image : {
                         publicId : imagePublicId,
                         url : imageUrl
-                    }
+                    },
+                    visibility : vis
                 };
             } else {
                 newPost = {
                     userId : new mongoose.Types.ObjectId(userId),
                     content : content,
+                    visibility : vis
                 }
             }
             let newPostDoc = new PostModel(newPost);

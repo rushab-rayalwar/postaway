@@ -34,7 +34,7 @@ export default class UsersRepository {
                 let errorMessages = Object.values(error.errors).map(e=>e.message);
                 return {success: false, errors:errorMessages, statusCode: 400}
             }
-            if(error.name=="MongooseError"){
+            if(error.name=="MongoServerError" || error.code == 11000){
                 return {success: false, errors:["User account already exists"], statusCode:409}
             }   
             console.error("Error caught in the catch block - "+error);
