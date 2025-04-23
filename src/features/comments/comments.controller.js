@@ -15,7 +15,11 @@ export default class CommentsController {
 
     }
     async postComment(req,res,next){
-        let {userId, content, postId} = req.body;
-        
+        const userId = req.user.UserId;
+        const {postId, content} = req.body;
+        let response = await this.commentsRepository.postComment(userId, postId, content);
+        if(response.success){
+            return res.status(response.statusCode).json({success: true, message: response.message, data:response.data});
+        }
     }
 }

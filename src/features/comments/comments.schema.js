@@ -5,35 +5,27 @@ import mongoose from "mongoose";
 
 //local
 
-const commentsSchema = new mongoose.Schema(
+export const commentsSchema = new mongoose.Schema(
     {
-        authors : {
-            type : [
-                {
-                    authorId : {
-                        type : mongoose.Schema.Types.ObjectId,
-                        required : [true, "Id of the user who posted the comment is required"],
-                        ref : "User"
-                    },
-                    authorName : {
-                        type : String,
-                        required : [true, "Name of the user who posted the comment is required"]
-                    }
-                }
-            ]
+        authorId : {
+            type: mongoose.Schema.Types.ObjectId,
+            required: [true, "User ID of the user commenting on the post is required"],
+            ref: "User"
         },
-        content : {
-            type : String,
-            required : [true, "Comment content cannot be empty"]
+        authorName : {
+            type: String,
+            required: [true, "User name of the user commenting on the post is required"]
         },
         postId : {
-            type : mongoose.Schema.Types.ObjectId,
-            required : [true, "Post id is required for the comment to associate with"],
+            type: mongoose.Schema.Types.ObjectId,
+            required: [true, "Post Id for the comment is required"],
             ref : "Post"
         },
-        isEdited : {
-            type : Boolean,
-            default : false
+        content : {
+            type: String,
+            required: [true, "Comment content cannot be empty"]
         }
     }, {timestamps:true}
-)
+);
+
+export const CommentModel = mongoose.model("Comment", commentsSchema);
