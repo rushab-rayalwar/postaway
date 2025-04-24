@@ -14,10 +14,11 @@ export default class PostsRepository {
     constructor() {
         
     }
+
     async getPostById(userId, postId){
         let user = await UserModel.findById(userId);
         if(!user){
-            throw ApplicationError(500,"User Id is invalid for accessing the post"); // this would be an internal server error as, the userId is saved in and extracted from JWT by the server and the user cannot choose / modify the userId while sending request
+            throw ApplicationError(500,"User Id is invalid for accessing the post"); // this is an internal server error as, the userId is saved in and extracted from JWT by the server and the user cannot choose / modify the userId while sending request
         }
         let post = await PostModel.findById(postId);
         if(!post){
@@ -43,6 +44,45 @@ export default class PostsRepository {
             return {success: true, statsuCode: 200, data, message: "Post fetched successfully"}
         }
     }
+
+    async getAllUserPosts(userId){
+        try {
+            // validate userId
+            let user = await UserModel.findById(userId).lean();
+            if(!user){
+                    throw new ApplicationError(500,"User Id is invalid for accessing the post"); // this is an internal server error as, the userId is saved in and extracted from JWT by the server and the user cannot choose / modify the userId while sending request
+                }
+
+            //get user posts
+            let posts = await PostModel.aggregate([
+                {
+                    $match : {
+                        userId : new mongoose.Types.ObjectId(userId)
+                    }
+                },
+                {
+                    $sort : {
+                        createdAt : -1
+                    }
+                }
+            ]);
+            if(posts.length === 0){
+                return {success:true, statusCode:200, message:"No posts by the user yet", data:[]}
+            }
+            const data = posts.map(p=>{
+                return {
+                    ...p,
+                    likes : p.likes.length || 0,
+                    comments : p.comments.length || 0
+                }
+            });
+            return {success:true, statusCode:200, message:"Posts retrived successfully", data:data}
+        } catch (error) {
+            console.log("Error caught in the catch block -", error);
+            throw error; // the error is handled by the global error handling middleware
+        }
+    }
+
     async createPost(userId, imageUrl, imagePublicId, content, visibility){
         
         

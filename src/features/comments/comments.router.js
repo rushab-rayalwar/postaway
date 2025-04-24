@@ -4,8 +4,8 @@
 import express from "express";
 
 // local
-import jwtAuthenticator from "../../middlewares/jwtAuthenticator";
-import CommentsController from "./comments.controller";
+import jwtAuthenticator from "../../middlewares/jwtAuthenticator.js";
+import CommentsController from "./comments.controller.js";
 
 const commentsRouter = express.Router();
 const commentsController = new CommentsController();

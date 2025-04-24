@@ -28,24 +28,25 @@ export const postsSchema = new mongoose.Schema({
         },
         required : false // image is optional
     },
-    likes : {
-        type : [
-            {
-                type : mongoose.Schema.Types.ObjectId,
-                ref : "Like"
-            }
-        ],
-        default : []
-    },
-    comments : {
-        type: [
-            {
-                type : mongoose.Schema.Types.ObjectId,
-                ref : "Comment"
-            }
-        ],
-        default : []
-    },
+    // },
+    // likes : {
+    //     type : [
+    //         {
+    //             type : mongoose.Schema.Types.ObjectId,
+    //             ref : "Like"
+    //         }
+    //     ],
+    //     default : []
+    // },
+    // comments : {
+    //     type: [
+    //         {
+    //             type : mongoose.Schema.Types.ObjectId,
+    //             ref : "Comment"
+    //         }
+    //     ],
+    //     default : []
+    // },
     visibility: {
         type: [
             {
@@ -61,7 +62,8 @@ export const postsSchema = new mongoose.Schema({
     //recentComment : {},
 },
 {
-    timestamps: true
+    timestamps: true,
+    collection: "posts"
 });
 
 export const PostModel = mongoose.model("Post",postsSchema);

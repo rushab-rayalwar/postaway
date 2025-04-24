@@ -25,7 +25,11 @@ export const commentsSchema = new mongoose.Schema(
             type: String,
             required: [true, "Comment content cannot be empty"]
         }
-    }, {timestamps:true}
+    }, 
+    {
+        timestamps:true,
+        collection: "comments"
+    }
 );
 
 export const CommentModel = mongoose.model("Comment", commentsSchema);

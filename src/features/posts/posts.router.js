@@ -15,6 +15,7 @@ const postsController = new PostsController();
 
 //GET
 postsRouter.get("/:postId", jwtAuthenticator, (req,res,next)=>postsController.getPostById(req,res,next));
+postsRouter.get("/", jwtAuthenticator, (req,res,next)=>postsController.getAllUserPosts(req,res,next));
 
 //POST
 postsRouter.post("/", jwtAuthenticator, upload.single("image"), uploadToCloudinary, (req,res,next)=>postsController.createPost(req,res,next));
