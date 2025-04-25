@@ -59,23 +59,30 @@ export default class CommentsRepository {
         }
     }
     async postComment(userId, postId, content){
+        let session;
         try{
+            //start transaction
+            session = await mongoose.startSession();
+            session.startTransaction();
+
             //validate user
-            console.log("userId", userId);
-            let user = await UserModel.findById(userId).lean();
+            let user = await UserModel.findById(userId).session(session).lean(); // when not implementing transactions, the session parameter is not needed
             if(!user){
+                await session.abortTransaction();
                 throw new ApplicationError(500, "User not found in the DB"); // this is an internal server error due to the fact that the userId extracted from the JWT was stored by the server and not finding a user for it implies serious issue - either the user was deleted unexpectedly, or, there's a flaw in the JWT signing/verification logic
             }
             let userName = user.name;
 
             //validate comment
             if(content === "" || !content){
+                await session.abortTransaction();
                 return {success: false, statusCode: 400, errors:["Comment content cannot be empty"]};
             }
 
-            //validate post id
-            let post = await PostModel.findById(postId).lean();
+            //validate post id and update the comments count
+            let post = await PostModel.findById(postId).session(session);
             if(!post){
+                await session.abortTransaction();
                 return {success: false, statusCode : 400, errors:["Invalid post ID or the post does not exist"]}
             }
 
@@ -86,15 +93,27 @@ export default class CommentsRepository {
                 postId : new mongoose.Types.ObjectId(postId),
                 content : content
             });
-            await newComment.save();
 
+            //save comment
+            await newComment.save({session});
+
+            //update and save post
+            post.commentsCount ++;
+            post.recentComment = new mongoose.Types.ObjectId(newComment._id)
+            await post.save(session);
+            
+            await session.commitTransaction();
             return {success:true, statusCode:201, message:"Comment posted successfully", data:newComment}
         } catch(error) {
             console.log("Error caught in the catch block -", error);
-            if(error instanceof ApplicationError){
-                throw error;
+            if(session && session.inTransaction()){
+                await session.abortTransaction();
             }
-            throw new Error(error);
+            throw error; // handle the error in the global error handler middleware
+        } finally {
+            if(session){
+                await session.endSession();
+            }
         }
     }
 }

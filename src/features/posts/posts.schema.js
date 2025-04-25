@@ -13,7 +13,7 @@ export const postsSchema = new mongoose.Schema({
     },
     content : {
         type : String,
-        default : "" // trim and process
+        required :[true, "Post content is required"],
     },
     image : {
         type : {
@@ -28,25 +28,6 @@ export const postsSchema = new mongoose.Schema({
         },
         required : false // image is optional
     },
-    // },
-    // likes : {
-    //     type : [
-    //         {
-    //             type : mongoose.Schema.Types.ObjectId,
-    //             ref : "Like"
-    //         }
-    //     ],
-    //     default : []
-    // },
-    // comments : {
-    //     type: [
-    //         {
-    //             type : mongoose.Schema.Types.ObjectId,
-    //             ref : "Comment"
-    //         }
-    //     ],
-    //     default : []
-    // },
     visibility: {
         type: [
             {
@@ -58,8 +39,19 @@ export const postsSchema = new mongoose.Schema({
             }
         ],
         default: ["everyone"]
-    }
-    //recentComment : {},
+    },
+    recentComment : {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Comment"
+    },
+    likesCount : {
+        type: Number,
+        default: 0
+    },
+    commentsCount : {
+        type: Number,
+        default: 0
+    },
 },
 {
     timestamps: true,

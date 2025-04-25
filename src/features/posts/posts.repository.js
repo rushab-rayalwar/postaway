@@ -69,14 +69,8 @@ export default class PostsRepository {
             if(posts.length === 0){
                 return {success:true, statusCode:200, message:"No posts by the user yet", data:[]}
             }
-            const data = posts.map(p=>{
-                return {
-                    ...p,
-                    likes : p.likes.length || 0,
-                    comments : p.comments.length || 0
-                }
-            });
-            return {success:true, statusCode:200, message:"Posts retrived successfully", data:data}
+
+            return {success:true, statusCode:200, message:"Posts retrived successfully", data:posts}
         } catch (error) {
             console.log("Error caught in the catch block -", error);
             throw error; // the error is handled by the global error handling middleware
