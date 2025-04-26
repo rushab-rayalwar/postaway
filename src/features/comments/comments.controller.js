@@ -15,6 +15,11 @@ export default class CommentsController {
         let userId = req.user.userId;
         let postId = req.params.postId;
         let response = await this.commentsRepository.getCommentsForPost(postId, userId);
+        if(response.success){
+            return res.status(response.statusCode).json({success: true, message: response.message, data:response.data});
+        } else {
+            return res.status(response.statusCode).json({success: false, errors: response.errors});
+        }
     }
     async postComment(req,res,next){
         const userId = req.user.userId;

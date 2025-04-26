@@ -25,11 +25,11 @@ export default class CommentsRepository {
             //validate post ID
             let post = await PostModel.findById(postId).lean();
             if(!post){
-                return {success: false, statusCode: 400, errors:["Invalid Post ID"]} 
+                return {success: false, statusCode: 404, errors:["Post not found"]} 
             }
 
             //get friendsList for post author
-            let friendsListForAuthor = await FriendsModel.findOne({ userId : new mongoose.Types.ObjectId(post.userId._id) }).lean();
+            let friendsListForAuthor = await FriendsModel.findOne({ userId : new mongoose.Types.ObjectId(post.userId) }).lean();
             if(!friendsListForAuthor){
                 throw new ApplicationError(500,"FriendsList for a user whos post exists cannot be found"); // this is an internal server error as, the post exists, and the userId is valid, so the friends list should exist too
             }
@@ -42,20 +42,23 @@ export default class CommentsRepository {
                 if(accessible){
                     let comments = await CommentModel.find({postId : new mongoose.Types.ObjectId(postId)});
                     return {success: true, statusCode: 200, message:"Comments fetched successfully", data:comments}
+                } else {
+                    return {success: false, statusCode: 404, message:"Post not found"} // to not expose the presence of the post to the user, we return a 404 error instead of 403
                 }
             }
             let friendshipLevel = friendObjectInFriendsList.level;
 
             //check if the post and hence its comments are accessible to the user and then return
             let accessible = post.visibility.includes(friendshipLevel) || post.visibility.includes("everyone");
-            let comments = await CommentModel.find({postId : new mongoose.Types.ObjectId(postId)});
-            return {success: true, statusCode: 200, message:"Comments fetched successfully", data:comments}
+            if(accessible){
+                let comments = await CommentModel.find({postId : new mongoose.Types.ObjectId(postId)});
+                return {success: true, statusCode: 200, message:"Comments fetched successfully", data:comments}
+            } else {
+                return {success: false, statusCode: 404, message:"Post not found"}
+            }
         } catch(error) {
             console.log("Error caught in the catch block -", error);
-            if(error instanceof ApplicationError) {
-                throw error;
-            }
-            throw Error(error);
+            throw error;
         }
     }
     async postComment(userId, postId, content){
