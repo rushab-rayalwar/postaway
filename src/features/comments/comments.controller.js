@@ -2,7 +2,6 @@
 
 //libs
 
-
 //local
 import ComentsRepository from "./comments.repository.js";
 
@@ -26,6 +25,17 @@ export default class CommentsController {
         const postId = req.params.postId;
         const { content } = req.body;
         let response = await this.commentsRepository.postComment(userId, postId, content);
+        if(response.success){
+            return res.status(response.statusCode).json({success: true, message: response.message, data:response.data});
+        } else {
+            return res.status(response.statusCode).json({success: false, errors: response.errors});
+        }
+    }
+    async updateComment(req,res,next){
+        let userId = req.user.userId;
+        let commentId = req.params.commentId;
+        let updatedContent = req.body.updatedContent;
+        let response = await this.commentsRepository.updateComment(userId,commentId,updatedContent);
         if(response.success){
             return res.status(response.statusCode).json({success: true, message: response.message, data:response.data});
         } else {

@@ -119,4 +119,52 @@ export default class CommentsRepository {
             }
         }
     }
+    async updateComment(userId, commentId, updatedContent) {
+        if(updatedContent === ""){
+            return {success:false, statusCode:400, errors:["Comment content cannot be empty"]};
+        }
+        let session;
+        try{
+            session = await mongoose.startSession();
+            session.startTransaction();
+
+            // validate userId and get user document
+            let user = await UserModel.findById(userId).lean().session(session);
+            if(!user){
+                await session.abortTransaction();
+                throw new ApplicationError(500, "User ID sending the request not found in the DB");
+            }
+
+            // validate commentId and get comment document
+            let comment = await CommentModel.findById(commentId).session(session);
+            if(!comment){
+                await session.abortTransaction();
+                return {success:false, statusCode: 404, errors:["Comment not found."]}
+            }
+
+            //check if comment belongs to the user
+            if(!comment.authorId.equals(new mongoose.Types.ObjectId(userId))){
+                await session.abortTransaction();
+                return {success:false, statusCode:403, errors:["You are not authorized to modify this comment."]}
+            }
+
+            // update comment
+            comment.content = updatedContent;
+            comment.updated = true;
+            await comment.save({session})
+
+            await session.commitTransaction();
+            return {success:true, statusCode:200, message:"Comment updated successfully", data:comment}
+        } catch (error) {
+            console.log("Error caught in the catch block -", error);
+            if(session && session.inTransaction()){
+                await session.abortTransaction();
+            }
+            throw error;
+        }  finally {
+            if(session){
+                await session.endSession(); 
+            }
+        }
+    }
 }

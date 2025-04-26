@@ -16,5 +16,11 @@ commentsRouter.get("/:postId", jwtAuthenticator, (req,res,next)=>commentsControl
 //POST
 commentsRouter.post("/:postId", jwtAuthenticator, (req,res,next)=>commentsController.postComment(req,res,next));
 
+//PATCH
+commentsRouter.patch("/:commentId", jwtAuthenticator, (req,res,next)=>commentsController.updateComment(req,res,next));
+
+//DELETE
+//commentsRouter.delete("/:commentId", jwtAuthenticator, (req,res,next)=>commentsController.deleteComment(req,res,next));
+
 
 export default commentsRouter;

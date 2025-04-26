@@ -24,6 +24,10 @@ export const commentsSchema = new mongoose.Schema(
         content : {
             type: String,
             required: [true, "Comment content cannot be empty"]
+        },
+        updated : {
+            type: Boolean,
+            default: false
         }
     }, 
     {
