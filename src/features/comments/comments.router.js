@@ -20,7 +20,7 @@ commentsRouter.post("/:postId", jwtAuthenticator, (req,res,next)=>commentsContro
 commentsRouter.patch("/:commentId", jwtAuthenticator, (req,res,next)=>commentsController.updateComment(req,res,next));
 
 //DELETE
-//commentsRouter.delete("/:commentId", jwtAuthenticator, (req,res,next)=>commentsController.deleteComment(req,res,next));
+commentsRouter.delete("/:commentId", jwtAuthenticator, (req,res,next)=>commentsController.deleteComment(req,res,next));
 
 
 export default commentsRouter;

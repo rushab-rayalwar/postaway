@@ -52,4 +52,10 @@ export default class FriendsController {
         let action = req.params.action;
         let response = await this.friendsRepository.respondToFriend(userId, friendId, action);
     }
+    async updateLevel(req,res,next){
+        let userId = req.user.userId;
+        let friendId = req.params.friendId;
+        let newLevel = req.body.newLevel;
+        let response = await this.friendsRepository.updateLevel(userId, friendId, newLevel);
+    }
 }

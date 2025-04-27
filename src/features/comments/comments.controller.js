@@ -42,4 +42,9 @@ export default class CommentsController {
             return res.status(response.statusCode).json({success: false, errors: response.errors});
         }
     }
+    async deleteComment(req,res,next){
+        let userId = req.user.userId;
+        let commentId = req.params.commentId;
+        let response = await this.commentsRepository.deleteComment(userId, commentId);
+    }
 }

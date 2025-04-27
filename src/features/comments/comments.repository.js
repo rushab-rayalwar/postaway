@@ -167,4 +167,65 @@ export default class CommentsRepository {
             }
         }
     }
+    async deleteComment(userId, commentId) {
+        let session;
+        try {
+            session = await mongoose.startSession();
+            session.startTransaction();
+
+            // validate userId
+            let user = await UserModel.findById(userId).lean().session(session);
+            if(!user){
+                throw new ApplicationError(500, "User ID sending the request not found in the DB");
+            }
+
+            // validate commentId
+            let comment = await CommentModel.findById(commentId).session(session);
+            if(!comment){
+                return {success:false, statusCode: 404, errors:["Comment not found."]}
+            }
+
+            // Check if the user is authorized to delete the comment.
+            // The user must either own the comment or be the owner of the post on which the comment exists.
+            let userIsAuthorizedToDelete = true;
+            if(!comment.authorId.equals(new mongoose.Types.ObjectId(userId))){ // if the user is not the author of the comment
+                userIsAuthorizedToDelete = false;
+            }
+
+            let postId = comment.postId;
+            let post = await PostModel.findById(postId).session(session);
+            if(!post){
+                throw new ApplicationError(500,"Post for an existing comment could not be found"); // indicates data inconsistency, a serious issue as, the comment exists, but the post does not
+            }
+            if(!post.userId.equals(new mongoose.Types.ObjectId(userId))){ // if the user is not the author of the post
+                userIsAuthorizedToDelete = false;
+            }
+            if(!userIsAuthorizedToDelete){
+                return {success:false, statusCode:403, errors:["You are not authorized to delete this comment."]};
+            }
+
+            // delete comment
+            await comment.deleteOne({session});
+
+            // update post
+            post.commentsCount --;
+            if(post.commentsCount < 0){
+                post.commentsCount = 0;
+            }
+            await post.save({session});
+
+            await session.commitTransaction();
+            return {success:true, statusCode:200, message:"Comment deleted successfully", data:comment}
+        } catch(error) {
+            console.log("Error caught in the catch block -", error);
+            if(session && session.inTransaction()){
+                await session.abortTransaction();
+            }
+            throw error;
+        } finally {
+            if(session){
+                await session.endSession();
+            }
+        }
+    }
 }
