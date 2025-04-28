@@ -217,7 +217,7 @@ export default class FriendsRepository {
             }
         }
     }
-    async respondToRequest(userId, friendId, action) { // Note: study mongoose transactions in this function
+    async respondToRequest(userId, friendId, action) {
         let session;
         try{
             session = await mongoose.startSession();
@@ -314,54 +314,59 @@ export default class FriendsRepository {
             // validate the userId
             let user = await UserModel.findById(userId).lean().session(session);
             if(!user){
+                await session.abortTransaction();
                 return {succes:false, errors:["User id sending the request is invalid"], statusCode :400}
             }
 
             // validate friend id
             let friend = await UserModel.findById(friendId).lean().session(session);
             if(!friend){
+                await session.abortTransaction();
                 return {succes:false, errors:["Friend id is invalid"], statusCode: 400}
             }
 
             // get friends list for the user
-            let friendsListForUser = await FriendsModel.findOne({userId: new mongoose.Types.ObjectId(userId)});
+            let friendsListForUser = await FriendsModel.findOne({userId: new mongoose.Types.ObjectId(userId)}).session(session);
             if(!friendsListForUser){
+                await session.abortTransaction();
                 throw new ApplicationError(500, "Friends list not found for an existing user");
             }
 
             // check if the friendId is in the friends list -- check if friends already
             let friendsAlready = true;
-            let friendIndexInFriendsListForUser = friendsListForUser.friends.find(f=>f.friendId.equals(friendId));
-            if(!friendIndexInFriendsListForUser < 0){
-                return {success: false, errors:["The user IDs specified are not friends"], statusCode: 400}
+            let friendIndexInFriendsListForUser = friendsListForUser.friends.findIndex(f=>f.friendId.equals(friendId));
+            if(friendIndexInFriendsListForUser < 0){
+                friendsAlready = false;
+                await session.abortTransaction();
             }
 
             // get friends list for the friend
-            let friendsListForFriend = await FriendsModel.findOne({userId: new mongoose.Types.ObjectId(friendId)});
+            let friendsListForFriend = await FriendsModel.findOne({userId: new mongoose.Types.ObjectId(friendId)}).lean().session(session);
             if(!friendsListForFriend){
+                await session.abortTransaction();
                 throw new ApplicationError(500, "Friends list not found for an existing user");
             }
             
             // check if the userId is in the friends list for the friend
-            let userIndexInFriendsListForFriend = friendsListForFriend.friends.find(f=>f.friendId.equals(userId));
-            if(!userIndexInFriendsListForFriend < 0){
+            let userIndexInFriendsListForFriend = friendsListForFriend.friends.findIndex(f=>f.friendId.equals(userId));
+            if(userIndexInFriendsListForFriend < 0){
                 if(friendsAlready){
+                    await session.abortTransaction();
                     throw new ApplicationError(500,"Inconsistent data: User is not in the friend's friend-list, but the friend is in the user's friend-list");
                 }
-                return {success: false, errors:["The user IDs specified are not friends"], statusCode: 400}
+                return {success: false, errors:["The user does not initially hold any level of friendship with the specified userId"], statusCode: 400}
             }
 
             // check if the new level is valid
             if(!["general","close_friend","inner_circle"].includes(newLevel)){
-                return {success: false, errors:["Invalid friend level"], statusCode: 400}
+                await session.abortTransaction();
+                return {success: false, errors:["Invalid friend level "], statusCode: 400}
             }
 
             // update the level
-            friendsListForFriend.friends[userIndexInFriendsListForFriend].level = newLevel;
-            friendsListForUser.friends[friendIndexInFriendsListForUser].level = newLevel;
+            friendsListForUser.friends[friendIndexInFriendsListForUser].level = newLevel; // only update the level in the user's friend-list as, the friend level for the same friendship can be different for both users
 
             await friendsListForUser.save({session});
-            await friendsListForFriend.save({session});
             await session.commitTransaction();
 
             return {success:true, statusCode: 200, message: "Friend level updated successfully", data:null};
