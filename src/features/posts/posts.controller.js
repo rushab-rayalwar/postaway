@@ -35,6 +35,10 @@ export default class PostsController {
         const content = req.body.content;
         const visibility = req.query.visibility;
 
+        if(!visibility || visibility == ""){
+            visibility = null;
+        }
+
         let response = await this.postsRepository.createPost(userId, imageUrl, imagePublicId, content, visibility);
         if(response.success){
             return res.status(response.statusCode).json({success:true, message:response.message, data:response.data});

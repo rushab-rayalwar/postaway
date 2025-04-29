@@ -16,32 +16,63 @@ export default class PostsRepository {
     }
 
     async getPostById(userId, postId){
-        let user = await UserModel.findById(userId);
-        if(!user){
-            throw ApplicationError(500,"User Id is invalid for accessing the post"); // this is an internal server error as, the userId is saved in and extracted from JWT by the server and the user cannot choose / modify the userId while sending request
-        }
-        let post = await PostModel.findById(postId);
-        if(!post){
-            return {success: false, statusCode: 404, errors:["Post not found"]}
-        }
-        let userIdWhoPosted = post.userId;
-        let friendsListOfUserWhoPosted = await FriendsModel.findOne( { userId : new mongoose.Types.ObjectId(userIdWhoPosted) } );
-        if(!friendsListOfUserWhoPosted){
-            throw new ApplicationError(500, "Something went wrong, friends list for an existing user cannot be found") // this is an internal server error because, it is expected that a friends list document to exist for every existing user, even when the list is empty
-        }
-        let friendObjectForUserWhoPosted = friendsListOfUserWhoPosted.friends.find((f)=>f.friendId.equals(new mongoose.Types.ObjectId(userId)));
-        if(!friendObjectForUserWhoPosted){ // user requesting the post is not a friend of the user who posted
-            
-            if(post.visibility.includes("all")){
-                return {success: true, statusCode: 200, data: post, message: "Post fetched successfully"} // NOTE this
+        try{
+            // validate userId
+            let user = await UserModel.findById(userId);
+            if(!user){
+                return {success: false, statusCode: 404, errors:["User sending the request is not registered"]};
             }
-        }
-        let friendLevel = friendObjectForUserWhoPosted.level;
-        if(post.visibility.includes(friendLevel)){
-            let data = {
+
+            // validate postId
+            let post = await PostModel.findById(postId).lean();
+            if(!post){
+                return {success: false, statusCode: 404, errors:["Post not found"]}
+            }
+            let postVisibility = post.visibility;
+
+            let data = null; // data to be returned
+
+            // check if the post is accessible to the user 
+            // - the post is accessible if its public or if the user is a friend of the user who posted it, with the frienship level included in the post visibility
+            let userIdWhoPosted = post.userId;
+            if( postVisibility.includes("public")) {
+                data = {
+                    ...post,
+                    visibility : null // hide the visibility of the post
+                }
+            } else if(userIdWhoPosted.equals(new mongoose.Types.ObjectId(userId) )){
+
+                data = post; // since the user is the owner, all info about the post is accessible
+
+            } else { // check if the visibility of the post includes the friendship level of the user with the user who posted
                 
+                // check if the user is a friend of the user who posted
+                let friendsListOfUserWhoPosted = await FriendsModel.findOne( { userId : new mongoose.Types.ObjectId(userIdWhoPosted) } ).lean();
+                if(!friendsListOfUserWhoPosted){
+                    throw new ApplicationError(500, "Data inconsistency: Expected friends list for existing user is missing.") // this is an internal server error because, it is expected that a friends list document to exist for every existing user, even when the list is empty
+                }
+
+                let friendObject = friendsListOfUserWhoPosted.friends.find((f)=>f.friendId.equals(new mongoose.Types.ObjectId(userId)));
+                if(!friendObject){ // user is not a friend of the post owner
+                    return {success:false, statusCode: 404, errors:["Post not found"]}  // although the post exists, it is not accessible to the user
+                }
+
+                // check and match friendship level
+                let level = friendObject.level;
+                if(postVisibility.includes(level) || postVisibility.includes("allFriends")) {
+                    data = {
+                        ...post,
+                        visibility : null // hide the visibility of the post
+                    }
+                } else {
+                    return {success:false, statusCode: 404, errors:["Post not found"]}
+                }
             }
-            return {success: true, statsuCode: 200, data, message: "Post fetched successfully"}
+
+            return {success:true, statusCode:200, message:"Post retrieved successfully", data:data}
+        } catch(error) {
+            console.log("Error caught in the catch block -", error);
+            throw error;
         }
     }
 
@@ -50,8 +81,8 @@ export default class PostsRepository {
             // validate userId
             let user = await UserModel.findById(userId).lean();
             if(!user){
-                    throw new ApplicationError(500,"User Id is invalid for accessing the post"); // this is an internal server error as, the userId is saved in and extracted from JWT by the server and the user cannot choose / modify the userId while sending request
-                }
+                return {success: false, statusCode: 404, errors:["User sending the request is not registered"]};
+            }
 
             //get user posts
             let posts = await PostModel.aggregate([
@@ -62,11 +93,14 @@ export default class PostsRepository {
                 },
                 {
                     $sort : {
-                        createdAt : -1
+                        createdAt : -1 // sort by createdAt in descending order
                     }
                 }
             ]);
-            if(posts.length === 0){
+
+            // check if posts exist
+
+            if(!posts || posts.length === 0){
                 return {success:true, statusCode:200, message:"No posts by the user yet", data:[]}
             }
 
@@ -77,13 +111,13 @@ export default class PostsRepository {
         }
     }
 
-    async createPost(userId, imageUrl, imagePublicId, content, visibility){
+    async createPost(userId, imageUrl, imagePublicId, content, visibility){ // transactions are not used here as, the post is created in a single collection and there are no other operations that need to be rolled back in case of failure. Also, the post creation is not dependent on any other operation.
         
-        
-        let vis = visibility || ["everyone"]; // "visibility" is a space-separated string provided via query param.
+        let vis = visibility || ["allFriends"]; // "visibility" is a space-separated string provided via query param.
                                             // If not provided, default to ["everyone"]. Convert to array and validate.
-        const validVisibilityOptions = ["everyone", "general","close_friend","inner_circle"];
-        if(!Array.isArray(vis)) {
+        const validVisibilityOptions = ["public","allFriends", "general","close_friend","inner_circle"];
+
+        if(vis != "allFriends") { // the user has provided the visibility options
             vis = vis.trim().split(" ");
             for(let option of vis){
                 if(!validVisibilityOptions.includes(option)){
@@ -93,12 +127,23 @@ export default class PostsRepository {
         }
 
         try {
+            // validate userId
             let user = await UserModel.findById(userId);
             if(!user){
-                throw new ApplicationError(500,"User Id is invalid for creating the post"); // this would be an internal server error as, the userId is saved in and extracted from JWT by the server and the user cannot choose / modify the userId while sending request
+                return {success: false, statusCode: 404, errors:["User sending the request is not registered"]};
             }
+
+            // validate content
+            if(!content || content.trim() === ""){
+                return {success: false, statusCode: 400, errors:["Post content is required"]};
+            }
+            if(content.length > 500){
+                return {success: false, statusCode: 400, errors:["Post content cannot exceed 500 characters"]};
+            }
+
+            // make new post object and update the database
             let newPost;
-            if(imageUrl && imagePublicId) {
+            if(imageUrl && imagePublicId) { // image is provided
                 newPost = {
                     userId : new mongoose.Types.ObjectId(userId),
                     content : content,
@@ -108,7 +153,7 @@ export default class PostsRepository {
                     },
                     visibility : vis
                 };
-            } else {
+            } else { // image is not provided
                 newPost = {
                     userId : new mongoose.Types.ObjectId(userId),
                     content : content,
@@ -117,6 +162,7 @@ export default class PostsRepository {
             }
             let newPostDoc = new PostModel(newPost);
             await newPostDoc.save();
+            
             return {success: true, statusCode: 201, message:"Post created successlly", data:newPostDoc}
         } catch(err) {
             console.log("Error caught in catch block -", err);
@@ -125,10 +171,8 @@ export default class PostsRepository {
                 return {
                     success:false, errors:errorsArray, statusCode : 400
                 }
-            } else if(err instanceof ApplicationError){
-                throw new ApplicationError(err.errorCode, err.errorMessage);
             } else {
-                throw new ApplicationError(500, "Something went wrong while creating a post");
+                throw err;
             }
         }
     }

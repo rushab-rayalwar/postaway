@@ -37,7 +37,7 @@ export default class FriendsController {
         } else {
             return res.status(response.statusCode).json({
                 success: response.success,
-                errors: [response.errors]
+                errors: response.errors
             });
         }
     }
@@ -45,17 +45,50 @@ export default class FriendsController {
         let userId = req.user._id;
         let friendId = req.params.friendId;
         let response = await this.friendsRepository.toggleFriendship(userId, friendId);
+        if(response.success){
+            return res.status(response.statusCode).json({
+                success: response.success,
+                data: response.data
+            });
+        } else {
+            return res.status(response.statusCode).json({
+                success: response.success,
+                errors: response.errors
+            });
+        }
     }
     async respondToRequest(req,res,next){
         let userId = req.user._id;
         let friendId = req.params.friendId;
         let action = req.params.action;
         let response = await this.friendsRepository.respondToFriend(userId, friendId, action);
+        if(response.success){
+            return res.status(response.statusCode).json({
+                success: response.success,
+                data: response.data
+            });
+        } else {
+            return res.status(response.statusCode).json({
+                success: response.success,
+                errors: response.errors
+            });
+        }
     }
     async updateLevel(req,res,next){
         let userId = req.user.userId;
         let friendId = req.params.friendId;
         let newLevel = req.body.newLevel;
         let response = await this.friendsRepository.updateLevel(userId, friendId, newLevel);
+        if(response.success){
+            return res.status(response.statusCode).json({
+                success: response.success,
+                data: response.data
+            });
+        } else {
+            return res.status(response.statusCode).json({
+                success: response.success,
+                errors: response.errors
+            });
+        }
     }
 }
