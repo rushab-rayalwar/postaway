@@ -176,4 +176,79 @@ export default class PostsRepository {
             }
         }
     }
+
+    async getPostsForAUser(userIdOfRequestingUser, userIdToBeViewed){
+        try{
+            // validate user ID of requesting user
+            let userRequesting = await UserModel.findById(userIdOfRequestingUser).lean();
+            if(!userRequesting){
+                return {success: false, statusCode: 404, errors:["User sending the request is not registered"]};
+            }
+
+            // validate user ID of the user who's posts are to be fetched
+            let postOwner = await UserModel.findById(userIdToBeViewed).lean();
+            if(!postOwner){
+                return {success: false, statusCode: 404, errors:["User id whose posts are to be viewed is not registered"]};
+            }
+
+            // get friendship status between the users
+            let friendsListForTheUserToBeViewed = await FriendsModel.findOne({ userId : new mongoose.Types.ObjectId(userIdToBeViewed) }).lean();
+            if(!friendsListForTheUserToBeViewed){
+                throw new ApplicationError(500,"Friends Object for an existing user could not be found");
+            }
+
+            let friendShipObjectForTheTwoUsersInTheList = friendsListForTheUserToBeViewed.friends.find(friend => friend.friendId.equals(new mongoose.Types.ObjectId(userIdOfRequestingUser)));
+            
+            let isFriend = !!friendShipObjectForTheTwoUsersInTheList;
+
+            let posts; // posts to be returned
+            if(!isFriend){
+                posts = await PostModel.aggregate([
+                    {
+                        $match : {
+                            userId : new mongoose.Types.ObjectId(userIdToBeViewed),
+                            visibility : "public"
+                        }
+                    },
+                    {
+                        $project : {
+                            visibility : -1, //  hide the visibility options for the post
+                        }
+                    },
+                    {
+                        $sort : {
+                            createdAt : -1 // sort by createdAt in descending order
+                        }
+                    }
+                ]);
+            } else {
+                let friendshipLevel = friendShipObjectForTheTwoUsersInTheList.level;
+                posts = await PostModel.aggregate([
+                    {
+                        $match : {
+                            userId : new mongoose.Types.ObjectId(userIdToBeViewed),
+                            visibility : {
+                                $in : ["allFriends", friendshipLevel, "public"]
+                            }
+                        }
+                    },
+                    {
+                        $project : {
+                            visibility : -1
+                        }
+                    },
+                    {
+                        $sort : {
+                            createdAt : -1 // sort by createdAt in descending order
+                        }
+                    }
+                ]);
+            }
+
+            return {success:true, statusCode:200, message:"Posts for the user fetched successfully", data:posts}
+        } catch(error) {
+            console.log("Error caught in the catch block -", error);
+            throw error;
+        }
+    }
 }

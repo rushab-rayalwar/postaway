@@ -58,4 +58,6 @@ export const postsSchema = new mongoose.Schema({
     collection: "posts"
 });
 
+postsSchema.index({createdAt: -1, updatedAt: -1});
+
 export const PostModel = mongoose.model("Post",postsSchema);
