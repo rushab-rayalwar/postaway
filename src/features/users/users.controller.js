@@ -21,6 +21,7 @@ export default class UsersController {
             return res.status(response.statusCode).json({success:false, errors:response.errors});
         }
     }
+    
     async signIn(req,res,next){
         let userData = req.body;
         if( !userData || !userData.email || !userData.password){ // NOTE the order of the checks, it is important to check for userData first
@@ -43,10 +44,12 @@ export default class UsersController {
             return res.status(response.statusCode).json({success:false, errors:[response.errors]});
         }
     }
+
     async logout(req,res,next){
         res.clearCookie("jwt");
         return res.status(200).json({success:true, message:"User logged out successfully.", data:null});
     }
+    
     async logoutAllDevices(req,res,next){
         let userId = req.user.userId;
         let response = await this.usersRepository.logoutAllDevices(userId);

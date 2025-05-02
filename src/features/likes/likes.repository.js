@@ -32,7 +32,7 @@ export default class LikesRepository {
             let postIsAccessible = false; // tracks if the post is accessible to the user, the post is accessible if the user is the owner of the post, or if the post is public, or if the user is a friend of the post owner with friendship level included in the post visibility
             let likes = []; // if the post is not accessible, the likes will be empty, if the post is accessible, the likes will be populated with the users who liked the post
 
-            // check if the post is public or the user is the owner of the post
+            // check if the post is public or if the user is the owner of the post
             if(postVisibility.includes("public") || post.userId.equals(new mongoose.Types.ObjectId(userId))){
                 postIsAccessible = true;
             } else {
@@ -51,7 +51,7 @@ export default class LikesRepository {
                 }
                 let friendObjectInFriendsListOfPostOwner = friendsListForPostOwner.friends.find(friend=>friend.friendId.equals(new mongoose.Types.ObjectId(userId)));
                 if(!friendObjectInFriendsListOfPostOwner){ // the post owner and the user are not friends
-                    return {success: false, message: "Post could not be found", statusCode: 404}; // for security reasons, the user should not be able to see the likes of a post they are not friends with
+                    return {success: false, message: "Post could not be found", statusCode: 404}; // for security, the user should not be able to see the likes of a post they are not friends with
                 }
 
                 // check if the friendship level is included in the post visibility
@@ -132,9 +132,10 @@ export default class LikesRepository {
                 postIsAccessible = true;
             } else {
 
-                // check the friendship level and compare it with the post visibility
+                // check the friendship level between the user and the post woner and compare it with the post visibility
 
-                let userWhoPosted = await UserModel.findById(post.userId).session(session);
+                // get post owner
+                let userWhoPosted = await UserModel.findById(post.userId).lean().session(session);
                 if(!userWhoPosted){
                     throw new ApplicationError(500,"Inconsistent data - User for an existing post could not be found"); // every post must have an owner as a registered user, if the user deletes their account, the associated post must also be deleted
                 }
@@ -149,7 +150,7 @@ export default class LikesRepository {
                 // check if the user is a friend of the post owner
                 let friendObjectInFriendsListOfPostOwner = friendsListForPostOwner.friends.find(friend=>friend.friendId.equals(new mongoose.Types.ObjectId(userId)));
                 if(!friendObjectInFriendsListOfPostOwner){ // the post owner and the user are not friends
-                    return {success: false, message: "Post could not be found", statusCode: 404}; // for security reasons, the user should not be able to see the likes of a post they are not friends with
+                    return {success: false, message: "Post could not be found", statusCode: 404}; // for security, the user should not be able to see the likes of a post they are not friends with
                 }
 
                 // check if the friendship level is included in the post visibility

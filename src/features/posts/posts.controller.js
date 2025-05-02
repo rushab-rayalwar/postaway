@@ -16,11 +16,13 @@ export default class PostsController {
         let response = await this.postsRepository.getPostById(userId, postId);
         if(response.success){
             return res.status(response.statusCode).json({success:true, message:response.message, data:response.post});
+        } else {
+            return res.status(response.statusCode).json({success:true, message:response.message, data:response.data});
         }
     }
     async getAllUserPosts(req,res,next){
         let userId = req.user.userId;
-        let level = req.query.level
+        let level = req.query.level || null;
         let response = await this.postsRepository.getAllUserPosts(userId, level);
         if(response.success){
             return res.status(response.statusCode).json({success:true, message:response.message, data:response.data});

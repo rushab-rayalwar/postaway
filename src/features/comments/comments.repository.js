@@ -38,7 +38,7 @@ export default class CommentsRepository {
             let friendObjectInFriendsList = friendsListForAuthor.friends.find(f=>f.friendId.equals(new mongoose.Types.ObjectId(userId)));
             if(!friendObjectInFriendsList){
                 // the user and post author not friends, check if the post is visible to everyone
-                let accessible = post.visibility.includes("everyone");
+                let accessible = post.visibility.includes("public");
                 if(accessible){
                     let comments = await CommentModel.find({postId : new mongoose.Types.ObjectId(postId)});
                     return {success: true, statusCode: 200, message:"Comments fetched successfully", data:comments}
@@ -49,7 +49,7 @@ export default class CommentsRepository {
             let friendshipLevel = friendObjectInFriendsList.level;
 
             //check if the post and hence its comments are accessible to the user and then return
-            let accessible = post.visibility.includes(friendshipLevel) || post.visibility.includes("everyone");
+            let accessible = post.visibility.includes(friendshipLevel) || post.visibility.includes("public");
             if(accessible){
                 let comments = await CommentModel.find({postId : new mongoose.Types.ObjectId(postId)});
                 return {success: true, statusCode: 200, message:"Comments fetched successfully", data:comments}
@@ -102,7 +102,7 @@ export default class CommentsRepository {
 
             //update and save post
             post.commentsCount ++;
-            post.recentComment = new mongoose.Types.ObjectId(newComment._id)
+            // post.recentComment = new mongoose.Types.ObjectId(newComment._id)
             await post.save(session);
             
             await session.commitTransaction();
@@ -120,7 +120,7 @@ export default class CommentsRepository {
         }
     }
     async updateComment(userId, commentId, updatedContent) {
-        if(updatedContent === ""){
+        if(updatedContent === "" || !updatedContent){
             return {success:false, statusCode:400, errors:["Comment content cannot be empty"]};
         }
         let session;
@@ -176,35 +176,41 @@ export default class CommentsRepository {
             // validate userId
             let user = await UserModel.findById(userId).lean().session(session);
             if(!user){
+                await session.abortTransaction();
                 throw new ApplicationError(500, "User ID sending the request not found in the DB");
             }
 
             // validate commentId
             let comment = await CommentModel.findById(commentId).session(session);
             if(!comment){
+                await session.abortTransaction();
                 return {success:false, statusCode: 404, errors:["Comment not found."]}
             }
 
             // Check if the user is authorized to delete the comment.
             // The user must either own the comment or be the owner of the post on which the comment exists.
-            let userIsAuthorizedToDelete = true;
-            if(!comment.authorId.equals(new mongoose.Types.ObjectId(userId))){ // if the user is not the author of the comment
-                userIsAuthorizedToDelete = false;
-            }
+            let userIsAuthorizedToDelete = false;
+            if(comment.authorId.equals(new mongoose.Types.ObjectId(userId))){ // if the user is not the author of the comment
+                userIsAuthorizedToDelete = true;
+            } else {
 
-            let postId = comment.postId;
-            let post = await PostModel.findById(postId).session(session);
-            if(!post){
-                throw new ApplicationError(500,"Post for an existing comment could not be found"); // indicates data inconsistency, a serious issue as, the comment exists, but the post does not
-            }
-            if(!post.userId.equals(new mongoose.Types.ObjectId(userId))){ // if the user is not the author of the post
-                userIsAuthorizedToDelete = false;
-            }
-            if(!userIsAuthorizedToDelete){
-                return {success:false, statusCode:403, errors:["You are not authorized to delete this comment."]};
+                let postId = comment.postId;
+                let post = await PostModel.findById(postId).session(session);
+                if(!post){
+                    await session.abortTransaction();
+                    throw new ApplicationError(500,"Post for an existing comment could not be found"); // indicates data inconsistency, a serious issue as, the comment exists, but the post does not
+                }
+                if(post.userId.equals(new mongoose.Types.ObjectId(userId))){ // if the user is not the author of the post
+                    userIsAuthorizedToDelete = true;
+                }
+
             }
 
             // delete comment
+            if(!userIsAuthorizedToDelete){
+                await session.abortTransaction();
+                return {success:false, statusCode:403, errors:["You are not authorized to delete this comment."]};
+            }
             await comment.deleteOne({session});
 
             // update post

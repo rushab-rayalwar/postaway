@@ -13,7 +13,7 @@ export default class LikesController {
     async getLikesForAPost(req,res,next){
         let userId = req.user.userId;
         let postId = req.params.postId;
-        let response = await this.likesRepository.getLikesForPost();
+        let response = await this.likesRepository.getLikesForPost(userId,postId);
         if(response.success){
             return res.status(response.statusCode).json({ success : true, message : response.message, data : response.data });
         } else {

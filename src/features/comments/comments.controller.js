@@ -46,5 +46,10 @@ export default class CommentsController {
         let userId = req.user.userId;
         let commentId = req.params.commentId;
         let response = await this.commentsRepository.deleteComment(userId, commentId);
+        if(response.success){
+            return res.status(response.statusCode).json({success: true, message: response.message, data:response.data});
+        } else {
+            return res.status(response.statusCode).json({success: false, errors: response.errors});
+        }
     }
 }

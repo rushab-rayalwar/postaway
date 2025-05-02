@@ -17,7 +17,7 @@ export default class FriendsRepository {
             // check if the userId is valid
             let user = await UserModel.findById(userId);
             if(!user){
-                return {success: false, errors:["User id sending the request is invalid"], statusCode: 400}
+                return {success: false, errors:["User id sending the request is not registered"], statusCode: 400}
             }
             // check if the friends list exists for the user
             let friendsList = await FriendsModel.findOne({userId: userId});
@@ -55,8 +55,16 @@ export default class FriendsRepository {
                         $replaceRoot : {
                             newRoot : "$friendsDetails"
                         }
+                    },
+                    {
+                        $project : {
+                            password : 0,
+                            tokenVersion : 0,
+                            friendsList : 0
+                        }
                     }
                 ]);
+
                 if(friendsDoc.length == 0){
                     return {success: true, data: [], statusCode: 200, message: "No friends found with the specified level"}
                 }
@@ -133,6 +141,7 @@ export default class FriendsRepository {
                     }
                 }
             ]);
+
             if(requests.length == 0){
                 return {success:true, statusCode200, data: [], message: "No friends yet"}
             }
@@ -142,7 +151,7 @@ export default class FriendsRepository {
             throw error;
         }
     }
-    async toggleFriendship(userId, friendId) {// friend Id is the userId of the user to be added or removed from the friends list of the user
+    async toggleFriendship(userId, friendId) {//  this function is used to send a friend request or remove a friend
         let session;
         try{
             session = await mongoose.startSession();
@@ -156,7 +165,7 @@ export default class FriendsRepository {
             }
 
             // check if the friendId is valid
-            let friend = await UserModel.findById(friendId).session(session);
+            let friend = await UserModel.findById(friendId).lean().session(session);
             if(!friend){
                 session.abortTransaction();
                 return {success: false, errors:["User Id for sending friend request to / removing as a friend is invalid"], statusCode:400}
@@ -170,7 +179,7 @@ export default class FriendsRepository {
             }
 
             // check if the friendId is already in the friends list -- check if the user is already a friend, if yes, remove the friend
-            let friendIndex = friendsList.friends.findIndex(f=>f.friendId == friendId);
+            let friendIndex = friendsList.friends.findIndex(f=>f.friendId.equals(friendId));
             if(friendIndex < 0){ // not a friend already, send a request
                 let friendRequest = {
                     from : new mongoose.Types.ObjectId(userId), 
@@ -209,10 +218,12 @@ export default class FriendsRepository {
             }
         } catch(err){
             console.error("Error caught in the catch block - "+err);
-            throw err;
-        }finally{
             if(session && session.inTransaction()){
                 await session.abortTransaction();
+            }
+            throw err;
+        }finally{
+            if(session){
                 await session.endSession();
             }
         }
@@ -297,7 +308,6 @@ export default class FriendsRepository {
                 // rollback the transaction if it is in progress
                 await session.abortTransaction();
             }
-            await session.abortTransaction();
             throw err;
         } finally {
             if(session){

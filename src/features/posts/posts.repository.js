@@ -76,7 +76,7 @@ export default class PostsRepository {
         }
     }
 
-    async getAllUserPosts(userId){
+    async getAllUserPosts(userId, level){
         try {
             // validate userId
             let user = await UserModel.findById(userId).lean();
@@ -84,16 +84,41 @@ export default class PostsRepository {
                 return {success: false, statusCode: 404, errors:["User sending the request is not registered"]};
             }
 
+            let matchStage; // match stage in the aggregation pipeline
+
+            if(level && level.trim() != ""){ // level is a query parameter as a string (which may or may not be provided by the user)
+                // convert to array
+
+                level = level.trim().replace(/\s+/g, " ").split(" ");
+                for(let l of level){
+                    if(!["public","allFriends", "general","close_friend","inner_circle"].includes(l)){
+                        return {success:false, errors:["Invalid level parameter"], statusCode:400};
+                    }
+                }
+
+                matchStage = {
+                    userId : new mongoose.Types.ObjectId(userId),
+                    visibility : { $in: level }
+                }
+            } else { // level is not provided by the user, fetch all posts
+                matchStage = {
+                    userId: new mongoose.Types.ObjectId(userId)
+                }
+            }
+
             //get user posts
             let posts = await PostModel.aggregate([
                 {
-                    $match : {
-                        userId : new mongoose.Types.ObjectId(userId)
-                    }
+                    $match : matchStage
                 },
                 {
                     $sort : {
                         createdAt : -1 // sort by createdAt in descending order
+                    }
+                },
+                {
+                    $project : {
+                        visibility : 0,
                     }
                 }
             ]);
@@ -126,18 +151,26 @@ export default class PostsRepository {
             }
         }
 
+        let session;
+
         try {
+            session = await mongoose.startSession();
+            session.startTransaction();
+
             // validate userId
-            let user = await UserModel.findById(userId);
+            let user = await UserModel.findById(userId).lean().session(session);
             if(!user){
+                await session.abortTransaction();
                 return {success: false, statusCode: 404, errors:["User sending the request is not registered"]};
             }
 
             // validate content
             if(!content || content.trim() === ""){
+                await session.abortTransaction();
                 return {success: false, statusCode: 400, errors:["Post content is required"]};
             }
             if(content.length > 500){
+                await session.abortTransaction();
                 return {success: false, statusCode: 400, errors:["Post content cannot exceed 500 characters"]};
             }
 
@@ -161,11 +194,18 @@ export default class PostsRepository {
                 }
             }
             let newPostDoc = new PostModel(newPost);
-            await newPostDoc.save();
+            await newPostDoc.save({session});
+
+            await session.commitTransaction();
             
             return {success: true, statusCode: 201, message:"Post created successlly", data:newPostDoc}
         } catch(err) {
             console.log("Error caught in catch block -", err);
+            
+            if(session && session.inTransaction()){
+                await session.abortTransaction();
+            }
+            
             if(err.name == "ValidationError"){
                 let errorsArray = Object.values(err.errors).map(e=>e.message); // NOTE this
                 return {
@@ -173,6 +213,10 @@ export default class PostsRepository {
                 }
             } else {
                 throw err;
+            }
+        } finally {
+            if(session){
+                await session.endSession();
             }
         }
     }
@@ -188,7 +232,7 @@ export default class PostsRepository {
             // validate user ID of the user who's posts are to be fetched
             let postOwner = await UserModel.findById(userIdToBeViewed).lean();
             if(!postOwner){
-                return {success: false, statusCode: 404, errors:["User id whose posts are to be viewed is not registered"]};
+                return {success: false, statusCode: 404, errors:["User id whose posts are to be viewed is invalid"]};
             }
 
             // get friendship status between the users
@@ -212,7 +256,7 @@ export default class PostsRepository {
                     },
                     {
                         $project : {
-                            visibility : -1, //  hide the visibility options for the post
+                            visibility : 0, //  hide the visibility options for the post
                         }
                     },
                     {
@@ -234,7 +278,7 @@ export default class PostsRepository {
                     },
                     {
                         $project : {
-                            visibility : -1
+                            visibility : 0
                         }
                     },
                     {
