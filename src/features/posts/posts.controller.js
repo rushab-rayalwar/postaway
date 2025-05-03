@@ -38,7 +38,7 @@ export default class PostsController {
         const imageUrl = req.image.secure_url;
 
         const content = req.body.content;
-        const visibility = req.query.visibility;
+        let visibility = req.query.visibility;
 
         if(!visibility || visibility == ""){
             visibility = null;

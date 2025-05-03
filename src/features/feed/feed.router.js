@@ -1,7 +1,7 @@
 // core
 
 // libs
-import express from "erxpress";
+import express from "express";
 
 // custom
 import jwtAuthenticator from "../../middlewares/jwtAuthenticator.js";
@@ -14,3 +14,5 @@ const feedController = new FeedController();
 
 //GET
 feedRouter.get("/", jwtAuthenticator, (req,res,next)=>feedController.getPosts(req,res,next));
+
+export default feedRouter;

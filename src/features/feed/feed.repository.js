@@ -13,84 +13,52 @@ export default class FeedRepository{
     constructor(){
 
     }
-
-    // async getPosts(userId, limit, cursor){
-    //     userId = new mongoose.Types.ObjectId(userId);
-    //     try {
-    //         // validate the user ID
-    //         let user = await UserModel.findById(userId);
-    //         if(!user) {
-    //             return {success: false, statusCode: 400, errors: ["User requesting the feed is not registered"]};
-    //         }
-
-    //         // get user's friends
-    //         let userFriendsObject = await FriendsModel.findOne({ userId: userId }).lean();
-    //         if(!userFriendsObject){
-    //             throw new ApplicationError(500,"Could not find friends document for an existing user");
-    //         }
-
-    //         let userFriendsObjectsArray = userFriendsObject.friends; // an array of objects containing userId, friend-level and the time since the friendship exists
-            
-    //         // get posts from friends accessible to the user
-    //         let posts = await PostModel.aggregate([
-    //             {
-    //                 $match : {
-    //                     $or: [
-    //                         {
-    //                             visibility : "public" // either the visibility options include public
-    //                         },
-    //                         {
-    //                             $and : [
-    //                                 {
-    //                                     userId : { $in : }
-    //                                 }
-    //                             ]
-    //                         }
-    //                     ]
-    //                 }
-    //             }
-    //         ])
-    //     }
-    // }
-    async getPosts(userId, limit = 10, cursor = null) {
+    async getFeed(userId, limit = 20, cursor = new Date()) {
         userId = new mongoose.Types.ObjectId(userId);
-    
-        // Step 1: Get user's friends
-        const userFriendsDoc = await FriendsModel.findOne({ userId }).lean();
-        if (!userFriendsDoc) throw new Error("Friends document not found.");
-    
-        const friendConditions = [];
-    
-        for (const friend of userFriendsDoc.friends) {
-            friendConditions.push({
-                userId: friend.friendId,
-                visibility: { $in: ["public", "allFriends", friend.level] }
-            });
+      
+        // 1. Get all your friends
+        const friendsDoc = await FriendsModel.findOne({ userId }).lean();
+        if (!friendsDoc) return [];
+      
+        const friendIds = friendsDoc.friends.map(f => f.friendId);
+      
+        // 2. For each friend, get how they classify you
+        const friendFriendDocs = await FriendsModel.find({
+          userId: { $in: friendIds },
+          "friends.friendId": userId
+        }, { userId: 1, friends: 1 }).lean();
+      
+        // 3. Build a map: friendId => level they gave to YOU
+        const visibilityMap = {};
+        for (const doc of friendFriendDocs) {
+          const friendEntry = doc.friends.find(f => f.friendId.toString() === userId.toString());
+          if (friendEntry) {
+            visibilityMap[doc.userId.toString()] = friendEntry.level;
+          }
         }
-    
-        const baseMatch = {
-            $or: [
-                { visibility: "public" },
-                ...friendConditions
-            ]
-        };
-    
-        if (cursor) {
-            baseMatch._id = { $lt: new mongoose.Types.ObjectId(cursor) };
-        }
-    
-        const posts = await PostModel.aggregate([
-            { $match: baseMatch },
-            { $sort: { _id: -1 } },
-            { $limit: limit },
-            {
-                $project: {
-                    visibility: 0 // remove visibility from final result
-                }
+      
+        // 4. Get posts from those friends, where post.visibility includes:
+        // - 'public'
+        // - 'allFriends'
+        // - or the level this friend gave you
+        const posts = await PostModel.find({
+          userId: { $in: friendIds },
+          createdAt: { $lt: cursor },
+          $expr: {
+            $function: {
+              body: function(visibility, userId, visibilityMap) {
+                const uid = userId.toString();
+                const allowed = visibilityMap[uid];
+                return visibility.includes("public") || 
+                       visibility.includes("allFriends") ||
+                       (allowed && visibility.includes(allowed));
+              },
+              args: ["$visibility", "$userId", visibilityMap],
+              lang: "js"
             }
-        ]);
-    
+          }
+        }).sort({ createdAt: -1 }).limit(limit).lean();
+      
         return posts;
     }
-    
 }

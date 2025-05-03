@@ -13,6 +13,7 @@ import usersRouter from "./src/features/users/users.router.js";
 import friendsRouter from "./src/features/friends/friends.router.js";
 import postsRouter from "./src/features/posts/posts.router.js";
 import commentsRouter from "./src/features/comments/comments.router.js";
+import feedRouter from "./src/features/feed/feed.router.js";
 
 //middlewares
 server.use(express.json());
@@ -20,6 +21,8 @@ server.use(express.urlencoded({extended:true}));
 server.use(cookieParser());
 
 //routes
+
+server.use("/api/feed",feedRouter);
 server.use("/api/users",usersRouter);
 server.use("/api/friends",friendsRouter);
 server.use("/api/posts",postsRouter);
