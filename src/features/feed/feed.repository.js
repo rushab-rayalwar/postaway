@@ -14,51 +14,30 @@ export default class FeedRepository{
 
     }
     async getFeed(userId, limit = 20, cursor = new Date()) {
-        userId = new mongoose.Types.ObjectId(userId);
-      
-        // 1. Get all your friends
-        const friendsDoc = await FriendsModel.findOne({ userId }).lean();
-        if (!friendsDoc) return [];
-      
-        const friendIds = friendsDoc.friends.map(f => f.friendId);
-      
-        // 2. For each friend, get how they classify you
-        const friendFriendDocs = await FriendsModel.find({
-          userId: { $in: friendIds },
-          "friends.friendId": userId
-        }, { userId: 1, friends: 1 }).lean();
-      
-        // 3. Build a map: friendId => level they gave to YOU
-        const visibilityMap = {};
-        for (const doc of friendFriendDocs) {
-          const friendEntry = doc.friends.find(f => f.friendId.toString() === userId.toString());
-          if (friendEntry) {
-            visibilityMap[doc.userId.toString()] = friendEntry.level;
-          }
+      try {
+        // validate user
+        let user = await UserModel.findById(userId);
+        if(!user){
+          return {success:false, errors:["User id requesting the feed is not registered"], statusCode:404}
         }
-      
-        // 4. Get posts from those friends, where post.visibility includes:
-        // - 'public'
-        // - 'allFriends'
-        // - or the level this friend gave you
-        const posts = await PostModel.find({
-          userId: { $in: friendIds },
-          createdAt: { $lt: cursor },
-          $expr: {
-            $function: {
-              body: function(visibility, userId, visibilityMap) {
-                const uid = userId.toString();
-                const allowed = visibilityMap[uid];
-                return visibility.includes("public") || 
-                       visibility.includes("allFriends") ||
-                       (allowed && visibility.includes(allowed));
-              },
-              args: ["$visibility", "$userId", visibilityMap],
-              lang: "js"
-            }
-          }
-        }).sort({ createdAt: -1 }).limit(limit).lean();
-      
-        return posts;
+
+        // get user friends
+        let friendsDocument = await FriendsModel.findOne({userId: userId});
+        if(!friendsDocument){
+          throw ApplicationError(500,"Friends List Document for an existing user could not found");
+        }
+
+        let friendsArray = friendsDocument.friends;
+
+        let posts = []
+
+        for(f of friendsArray){
+          let friendsListForTheFriend = await FriendsModel.findOne({userId : f.friendId});
+          let postsFromFriend
+        }
+
+      } catch(error) {
+
+      }
     }
 }
