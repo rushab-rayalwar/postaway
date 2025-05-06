@@ -11,8 +11,8 @@ let rules = {
         body("password").isLength({ min: 5 }).withMessage("Password must be at least 5 characters long"),
     ],
     login: [
-        body("email").isEmail().withMessage("Invalid credentials."),
-        body("password").isString().withMessage("Invalid credentials.")
+        body("email").isEmail().withMessage("Invalid email."),
+        body("password").isString().withMessage("Invalid password.")
     ]
 };
 
