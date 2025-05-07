@@ -68,7 +68,7 @@ export default class FeedRepository{
 
         if (postFetchConditions.length === 0) {
           await session.commitTransaction();
-          return {success: true, message: "No friends or valid friendship levels found", statusCode: 200, data: []};
+          return {success: true, message: "No posts to show", statusCode: 200, data: []};
         }
 
         let postsFromFriends = await PostModel.aggregate([

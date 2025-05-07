@@ -21,7 +21,7 @@ export default class FeedController{
         if(!response.success) {
             return res.status(response.statusCode).json({success: false, errors:response.errors});
         } else {
-            return res.status(200).json({success: true, data: response.data});
+            return res.status(200).json({success: true, data: response.data, message: response.message});
         }
     }
 }
