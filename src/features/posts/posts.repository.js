@@ -163,6 +163,7 @@ export default class PostsRepository {
                 await session.abortTransaction();
                 return {success: false, statusCode: 404, errors:["User sending the request is not registered"]};
             }
+            let userName = user.name;
 
             // validate content
             if(!content || content.trim() === ""){
@@ -179,6 +180,7 @@ export default class PostsRepository {
             if(imageUrl && imagePublicId) { // image is provided
                 newPost = {
                     userId : new mongoose.Types.ObjectId(userId),
+                    userName: userName,
                     content : content,
                     image : {
                         publicId : imagePublicId,
@@ -189,6 +191,7 @@ export default class PostsRepository {
             } else { // image is not provided
                 newPost = {
                     userId : new mongoose.Types.ObjectId(userId),
+                    userName,
                     content : content,
                     visibility : vis
                 }
@@ -293,6 +296,60 @@ export default class PostsRepository {
         } catch(error) {
             console.log("Error caught in the catch block -", error);
             throw error;
+        }
+    }
+
+    async updatePostVisibility(userId, postId, newVisibilityOptions){
+        let session;
+        userId = new mongoose.Types.ObjectId(userId);
+        postId = new mongoose.Types.ObjectId(postId);
+        try{
+            session = await mongoose.startSession();
+            session.startTransaction();
+
+            //validate user
+            const user = await UserModel.findById(userId).lean().session(session);
+            if(!user){
+                await session.abortTransaction();
+                return {success: false, statusCode: 404, errors:["User sending the request is not registered"]};
+            }
+
+            //validate post
+            let post = await PostModel.findById(postId).session(session);
+            if(!post){
+                await session.abortTransaction();
+                return {success: false, statusCode: 404, errors:["Post does not exist"]};
+            }
+
+            // validate new visibility options
+            if( !newVisibilityOptions || newVisibilityOptions.trim() === "" ){
+                await session.abortTransaction();
+                return {success:false, statusCode:400, errors:["Visibility options are not provided"]}
+            }
+            const  validVisibilityOptions = ["public","allFriends", "general","close_friend","inner_circle"];
+            newVisibilityOptions = newVisibilityOptions.trim().replace(/\s+/g," ").split(" ");
+            for(let option of newVisibilityOptions){
+                if(!validVisibilityOptions.includes(option)){
+                    return {success:false, errors:[`Visibility option '${option}' is invalid`], statusCode:400}
+                }
+            }
+
+            post.visibility = newVisibilityOptions;
+
+            await post.save({session});
+
+            await session.commitTransaction();
+            return{success:true, message:"Visibility options updated successfully", statusCode:200, data:post}
+        } catch(error){
+            console.log("Error caught in 'updatePostVisibility' -", error);
+            if(session && session.inTransaction()){
+                await session.abortTransaction();
+            }
+            throw error;
+        } finally{
+            if(session){
+                await session.endSession();
+            }
         }
     }
 }

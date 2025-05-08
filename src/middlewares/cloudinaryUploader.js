@@ -17,7 +17,7 @@ export default async function uploadToCloudinary(req, res, next) {
             const buffer = req.file.buffer;
             const cloudinaryStream = cloudinary.uploader.upload_stream(
                 {
-                    folder : `postaway/postImages/${req.user.userId}`
+                    folder : `postaway/postImages/${req.user.userName}-${req.user.userId}`
                 },
                 (error, result)=>{
                     if(error) reject(error);

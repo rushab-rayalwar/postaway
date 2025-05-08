@@ -11,6 +11,10 @@ export const postsSchema = new mongoose.Schema({
         required:[true, "User ID of the post not specified"],
         ref: "User"
     },
+    userName: {
+        type : String,
+        required : [true, "Name of the post owner is requried while creating the post"]
+    },
     content : {
         type : String,
         required :[true, "Post content is required"],
@@ -58,6 +62,6 @@ export const postsSchema = new mongoose.Schema({
     collection: "posts"
 });
 
-postsSchema.index({createdAt: -1, updatedAt: -1});
+postsSchema.index({createdAt: -1});
 
 export const PostModel = mongoose.model("Post",postsSchema);

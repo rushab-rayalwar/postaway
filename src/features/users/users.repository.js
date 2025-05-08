@@ -31,11 +31,11 @@ export default class UsersRepository {
             return {success:true, data, statusCode:201, message:"User created successfully."}
         } catch(error) {
             if(error.name == "ValidationError"){
-                let errorMessages = Object.values(error.errors).map(e=>e.message);
+                let errorMessages = Object.values(error.errors).map(e=>e.message); // Object.values converts keys of an object into an array
                 return {success: false, errors:errorMessages, statusCode: 400}
             }
-            if(error.name=="MongoServerError" || error.code == 11000){
-                return {success: false, errors:["User account already exists"], statusCode:409}
+            if(error.name=="MongooseError" || error.code == 11000 || error.keyPattern && error.keyPattern.email){
+                return {success: false, errors:["User account already exists for the email id"], statusCode:409}
             }   
             console.error("Error caught in the catch block - "+error);
             throw new ApplicationError(500,"Something went wrong!")
@@ -54,6 +54,7 @@ export default class UsersRepository {
             let data = {
                 _id: user._id,
                 email: user.email,
+                name: user.name,
                 tokenVersion : user.tokenVersion
             }
             return {success:true, data, statusCode:200, message:"User logged in successfully."}

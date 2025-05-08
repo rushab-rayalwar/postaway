@@ -7,6 +7,8 @@ import { body, validationResult } from "express-validator";
 
 let rules = {
     registration: [
+        body("name").notEmpty().withMessage("User name is required"),
+        body("name").isLength({max:15}).withMessage("User name must be under 15 characters"),
         body("email").isEmail().withMessage("Email is not valid"),
         body("password").isLength({ min: 5 }).withMessage("Password must be at least 5 characters long"),
     ],

@@ -34,6 +34,7 @@ export default class UsersController {
             let token = jwt.sign(
                 {
                     userId:user._id,
+                    userName:user.name,
                     email:user.email,
                     tokenVersion : userTokenVersion
                 }, 

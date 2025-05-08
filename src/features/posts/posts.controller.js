@@ -67,4 +67,16 @@ export default class PostsController {
             return res.status(response.statusCode).json({success:false, errors:response.errors})
         }
     }
+
+    async updatePostVisibility(req,res,next){
+        let userId = req.user.userId;
+        let postId = req.params.postId;
+        let newVisibilityOptions = req.params.options;
+        let response = await this.postsRepository.updatePostVisibility(userId,postId,newVisibilityOptions);
+        if(response.success){
+            return res.status(response.statusCode).json({success:true, message:response.message, data:response.data});
+        } else {
+            return res.status(response.statusCode).json({success:false, errors:response.errors})
+        }
+    }
 }
