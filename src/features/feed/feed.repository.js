@@ -13,14 +13,15 @@ export default class FeedRepository{
     constructor(){
 
     }
-    async getFeed(userId, limit, cursor = new Date(), filter){
+    async getFeed(userId, limit, cursor = new Date(), filter){ // the filter feature is not implemented yet
       let session;
-      userId = new mongoose.Types.ObjectId(userId);
       try{
+        
         session = await mongoose.startSession();
         session.startTransaction();
 
         // validate user
+        userId = new mongoose.Types.ObjectId(userId);
         let user = await UserModel.findById(userId).lean().session(session);
         if(!user){
           await session.abortTransaction();
@@ -35,14 +36,14 @@ export default class FeedRepository{
         }
         let friendsArray = friendsListForUser.friends;
 
-        let friendshipLevels = []; // an array fo objects containing the user id of the friend and the friendship level for the user by the friend
+        let friendshipLevels = []; // an array fo objects containing the user id of the friend and the friendship level towards the user by the friend
 
         // get friendship level for user by friends i.e. populate the friendshipLevels array
         for(let f of friendsArray){
           let friendsListForFriend = await FriendsModel.findOne({userId : f.friendId}).lean().session(session); // get the friends list for the friend
           if(!friendsListForFriend){
             await session.abortTransaction();
-            throw new ApplicationError(500,"Friends list for an existing user could not be found"); // since the userid of the friend is present in the firends array of the user, the friend's account exists
+            throw new ApplicationError(500,"Friends list for a friend of the user could not be found"); // since the userid of the friend is present in the firends array of the user, the friend's account exists
           }
           
           let userObjectInTheFriendsArray = friendsListForFriend.friends.find(friendObject=>friendObject.friendId.equals(userId));
@@ -66,23 +67,27 @@ export default class FeedRepository{
           }
         });
 
-        if (postFetchConditions.length === 0) {
-          await session.commitTransaction();
-          return {success: true, message: "No posts to show", statusCode: 200, data: []};
-        }
-
         let postsFromFriends = await PostModel.aggregate([
           {
             $match : {
+
               $and : [
                 {
                   createdAt : {$lt : cursor}
                 },
                 {
-                  $or : postFetchConditions
+                  $or : [
+                    { userId : userId }, // matches posts that are owned by the user
+                    ...(postFetchConditions ? postFetchConditions : []) // matches accessible posts by the user's friends NOTE THIS
+                    ,
+                    {
+                      visibility : { $in: ["public"] } // matches public posts
+                    }
+                  ]
                 }
               ]
             }
+
           },
           {
             $sort : {
@@ -108,15 +113,19 @@ export default class FeedRepository{
         return {success : true, message:"Posts retrived successfully", statusCode:200, data:postsFromFriends}
 
       } catch(error) {
+
         console.log("Error in getFeed: ", error);
         if(session && session.inTransaction()){
           await session.abortTransaction();
         }
         throw error;
+
       } finally {
+
         if(session){
           session.endSession();
         }
+        
       }
     }
 }

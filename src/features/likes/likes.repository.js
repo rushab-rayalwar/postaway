@@ -15,16 +15,30 @@ export default class LikesRepository {
 
     }
     async getLikesForPost(userId, postId){
+        let session;
         try{
+
+            //start session
+            session = await mongoose.startSession();
+            session.startTransaction();
+
             // validate userId
-            let user = await UserModel.findById(userId);
+            userId = new mongoose.Types.ObjectId(userId); // convert to ObjectId, userId is always a valid ObjectId as it is coming from the auth middleware
+            let user = await UserModel.findById(userId).session(session);
             if(!user){
+                await session.abortTransaction();
                 return {success:false, errors:["User id sending the request is invalid"], statusCode: 400};
             }
 
             // validate postId and get post visibility
-            let post = await PostModel.findById(postId);
+            if( !mongoose.Types.ObjectId.isValid(postId) ){
+                await session.abortTransaction();
+                return {success:false, errors:["Post id is invalid"], statusCode: 400};
+            }
+            postId = new mongoose.Types.ObjectId(postId);
+            let post = await PostModel.findById(postId).session(session); // convert to ObjectId
             if(!post){
+                await session.abortTransaction();
                 return {success:false, errors:["Post could not be found"], statusCode: 400};
             }
 
@@ -33,24 +47,27 @@ export default class LikesRepository {
             let likes = []; // if the post is not accessible, the likes will be empty, if the post is accessible, the likes will be populated with the users who liked the post
 
             // check if the post is public or if the user is the owner of the post
-            if(postVisibility.includes("public") || post.userId.equals(new mongoose.Types.ObjectId(userId))){
+            if(postVisibility.includes("public") || post.userId.equals(userId)){
                 postIsAccessible = true;
             } else {
 
                 // check friendship
                 let userWhoPosted = await UserModel.findById(post.userId);
                 if(!userWhoPosted){
+                    await session.abortTransaction();
                     throw new ApplicationError(500,"Inconsistent data - User for an existing post could not be found"); // every post must have an owner as a registered user, if the user deletes their account, the associated post must also be deleted
                 }
 
                 // get friends list for the post owner
-                let userIdOfPostOwner = new mongoose.Types.ObjectId(post.userId);
+                let userIdOfPostOwner = post.userId;
                 let friendsListForPostOwner = await FriendModel.findOne({userId : userIdOfPostOwner}).lean();
                 if(!friendsListForPostOwner) {
+                    await session.abortTransaction();
                     throw new ApplicationError(500, "Friends list could not be found for an existing user");
                 }
-                let friendObjectInFriendsListOfPostOwner = friendsListForPostOwner.friends.find(friend=>friend.friendId.equals(new mongoose.Types.ObjectId(userId)));
+                let friendObjectInFriendsListOfPostOwner = friendsListForPostOwner.friends.find(friend=>friend.friendId.equals(userId));
                 if(!friendObjectInFriendsListOfPostOwner){ // the post owner and the user are not friends
+                    await session.abortTransaction();
                     return {success: false, message: "Post could not be found", statusCode: 404}; // for security, the user should not be able to see the likes of a post they are not friends with
                 }
 
@@ -59,6 +76,7 @@ export default class LikesRepository {
                 if(postVisibility.includes(friendshipLevel)){
                     postIsAccessible = true;
                 } else {
+                    await session.abortTransaction();
                     return {success: false, message: "Post could not be found", statusCode: 404};
                 }
             }
@@ -68,7 +86,7 @@ export default class LikesRepository {
                 likes = await LikeModel.aggregate([
                     {
                         $match : {
-                            forPost : new mongoose.Types.ObjectId(postId)
+                            forPost : postId
                         }
                     },
                     {
@@ -94,19 +112,34 @@ export default class LikesRepository {
                             email : 1
                         }
                     }
-                ]);
+                ]).sess;
             }
 
             if(likes.length === 0){
+                await session.commitTransaction();
                 return {success: true, message:"No likes for the post yet", statusCode : 200, data: []}
             }
 
+            await session.commitTransaction();
             return { success: true, message:"Likes for the post", statusCode : 200, data: likes }
+
         } catch(error){
-            console.log("Caught in catch block - error in getting likes for the post", error);
+
+            console.log("Caught in getLikesForPost", error);
+            if(session && session.inTransaction()){
+                await session.abortSession();
+            }
             throw error;
+ 
+        } finally {
+
+            if(session){
+                session.endTransaction();
+            }
+
         }
     }
+
     async toggleLikeForPost(userId, postId){
         let session;
         try{
@@ -114,12 +147,17 @@ export default class LikesRepository {
             session.startTransaction();
 
             // validate userId
+            userId = new mongoose.Types.ObjectId(userId); // convert to ObjectId
             let user = await UserModel.findById(userId).session(session);
             if(!user){
                 return {success:false, errors:["User id sending the request is invalid"], statusCode: 400};
             }
 
             // validate postId
+            if( !mongoose.Types.ObjectId.isValid(postId) ){
+                return {success:false, errors:["Post id is invalid"], statusCode: 400};
+            }
+            postId = new mongoose.Types.ObjectId(postId); // convert to ObjectId
             let post = await PostModel.findById(postId).session(session);
             if(!post){
                 return {success:false, errors:["Post could not be found"], statusCode: 400};
@@ -128,7 +166,7 @@ export default class LikesRepository {
             // check if the post is accessible to the user
             let postIsAccessible = false;
             let postVisibility = post.visibility;
-            if(post.userId.equals(new mongoose.Types.ObjectId(userId)) || postVisibility.includes("public")){ // user is the owner of the post or the post is public
+            if(post.userId.equals(userId) || postVisibility.includes("public")){ // user is the owner of the post or the post is public
                 postIsAccessible = true;
             } else {
 
@@ -148,7 +186,7 @@ export default class LikesRepository {
                 }
 
                 // check if the user is a friend of the post owner
-                let friendObjectInFriendsListOfPostOwner = friendsListForPostOwner.friends.find(friend=>friend.friendId.equals(new mongoose.Types.ObjectId(userId)));
+                let friendObjectInFriendsListOfPostOwner = friendsListForPostOwner.friends.find(friend=>friend.friendId.equals(userId));
                 if(!friendObjectInFriendsListOfPostOwner){ // the post owner and the user are not friends
                     return {success: false, message: "Post could not be found", statusCode: 404}; // for security, the user should not be able to see the likes of a post they are not friends with
                 }

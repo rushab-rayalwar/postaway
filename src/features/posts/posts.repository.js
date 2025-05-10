@@ -16,18 +16,31 @@ export default class PostsRepository {
     }
 
     async getPostById(userId, postId){
+        let session;
         try{
+            // start session
+            session = await mongoose.startSession();
+            session.startTransaction();
+
             // validate userId
+            userId = new mongoose.Types.ObjectId(userId);
             let user = await UserModel.findById(userId);
             if(!user){
+                await session.abortTransaction();
                 return {success: false, statusCode: 404, errors:["User sending the request is not registered"]};
             }
 
             // validate postId
+            if(!mongoose.Types.ObjectId.isValid(postId)){
+                await session.abortTransaction();
+                return {success: false, statusCode: 400, errors:["Post ID is invalid"]};
+            }
+            postId = new mongoose.Types.ObjectId(postId); // convert to ObjectId
             let post = await PostModel.findById(postId).lean();
             if(!post){
+                await session.abortTransaction();
                 return {success: false, statusCode: 404, errors:["Post not found"]}
-            }
+            };
             let postVisibility = post.visibility;
 
             let data = null; // data to be returned
@@ -40,19 +53,19 @@ export default class PostsRepository {
                     ...post,
                     visibility : null // hide the visibility of the post
                 }
-            } else if(userIdWhoPosted.equals(new mongoose.Types.ObjectId(userId) )){
+            } else if( userIdWhoPosted.equals(userId) ){
 
                 data = post; // since the user is the owner, all info about the post is accessible
 
             } else { // check if the visibility of the post includes the friendship level of the user with the user who posted
                 
                 // check if the user is a friend of the user who posted
-                let friendsListOfUserWhoPosted = await FriendsModel.findOne( { userId : new mongoose.Types.ObjectId(userIdWhoPosted) } ).lean();
+                let friendsListOfUserWhoPosted = await FriendsModel.findOne({ userId:userIdWhoPosted }).lean();
                 if(!friendsListOfUserWhoPosted){
                     throw new ApplicationError(500, "Data inconsistency: Expected friends list for existing user is missing.") // this is an internal server error because, it is expected that a friends list document to exist for every existing user, even when the list is empty
                 }
 
-                let friendObject = friendsListOfUserWhoPosted.friends.find((f)=>f.friendId.equals(new mongoose.Types.ObjectId(userId)));
+                let friendObject = friendsListOfUserWhoPosted.friends.find((f)=>f.friendId.equals(userId));
                 if(!friendObject){ // user is not a friend of the post owner
                     return {success:false, statusCode: 404, errors:["Post not found"]}  // although the post exists, it is not accessible to the user
                 }
@@ -71,16 +84,26 @@ export default class PostsRepository {
 
             return {success:true, statusCode:200, message:"Post retrieved successfully", data:data}
         } catch(error) {
-            console.log("Error caught in the catch block -", error);
+
+            console.log("Error caught in getPostById -", error);
             throw error;
+
         }
-    }
+    } 
 
     async getAllUserPosts(userId, level){
+        let session;
         try {
+
+            // start session
+            session = await mongoose.startSession();
+            session.startTransaction();
+
             // validate userId
-            let user = await UserModel.findById(userId).lean();
+            userId = new mongoose.Types.ObjectId(userId); // userId is extracted from a valid token, hence it is valid
+            let user = await UserModel.findById(userId).lean().session(session);
             if(!user){
+                await session.abortTransaction();
                 return {success: false, statusCode: 404, errors:["User sending the request is not registered"]};
             }
 
@@ -92,17 +115,18 @@ export default class PostsRepository {
                 level = level.trim().replace(/\s+/g, " ").split(" ");
                 for(let l of level){
                     if(!["public","allFriends", "general","close_friend","inner_circle"].includes(l)){
+                        await session.abortTransaction();
                         return {success:false, errors:["Invalid level parameter"], statusCode:400};
                     }
                 }
 
                 matchStage = {
-                    userId : new mongoose.Types.ObjectId(userId),
+                    userId : userId,
                     visibility : { $in: level }
                 }
             } else { // level is not provided by the user, fetch all posts
                 matchStage = {
-                    userId: new mongoose.Types.ObjectId(userId)
+                    userId: userId
                 }
             }
 
@@ -115,24 +139,32 @@ export default class PostsRepository {
                     $sort : {
                         createdAt : -1 // sort by createdAt in descending order
                     }
-                },
-                {
-                    $project : {
-                        visibility : 0,
-                    }
                 }
-            ]);
+            ]).session(session);
 
             // check if posts exist
-
             if(!posts || posts.length === 0){
+                await session.abortTransaction();
                 return {success:true, statusCode:200, message:"No posts by the user yet", data:[]}
             }
 
+            await session.commitTransaction();
             return {success:true, statusCode:200, message:"Posts retrived successfully", data:posts}
+
         } catch (error) {
-            console.log("Error caught in the catch block -", error);
+
+            console.log("Error caught in getAllUserPosts -", error);
+            if(session && session.inTransaction()){
+                await session.abortTransaction();
+            }
             throw error; // the error is handled by the global error handling middleware
+
+        } finally {
+
+            if(session){
+                await session.endSession();
+            }
+
         }
     }
 
@@ -158,6 +190,7 @@ export default class PostsRepository {
             session.startTransaction();
 
             // validate userId
+            userId = new mongoose.Types.ObjectId(userId); // userId is extracted from a valid token, hence it is valid -- NOTE THIS
             let user = await UserModel.findById(userId).lean().session(session);
             if(!user){
                 await session.abortTransaction();
@@ -179,7 +212,7 @@ export default class PostsRepository {
             let newPost;
             if(imageUrl && imagePublicId) { // image is provided
                 newPost = {
-                    userId : new mongoose.Types.ObjectId(userId),
+                    userId : userId,
                     userName: userName,
                     content : content,
                     image : {
@@ -190,7 +223,7 @@ export default class PostsRepository {
                 };
             } else { // image is not provided
                 newPost = {
-                    userId : new mongoose.Types.ObjectId(userId),
+                    userId : userId,
                     userName,
                     content : content,
                     visibility : vis
@@ -200,10 +233,11 @@ export default class PostsRepository {
             await newPostDoc.save({session});
 
             await session.commitTransaction();
-            
             return {success: true, statusCode: 201, message:"Post created successlly", data:newPostDoc}
+
         } catch(err) {
-            console.log("Error caught in catch block -", err);
+
+            console.log("Error caught in createPost -", err);
             
             if(session && session.inTransaction()){
                 await session.abortTransaction();
@@ -217,34 +251,51 @@ export default class PostsRepository {
             } else {
                 throw err;
             }
+
         } finally {
+
             if(session){
                 await session.endSession();
             }
+
         }
     }
 
-    async getPostsForAUser(userIdOfRequestingUser, userIdToBeViewed){
+    async getPostsForAUser(userIdOfRequestingUser, userIdToBeViewed){ // fetch posts for a user other than the user who is requesting
+        let session;
         try{
+            // start session
+            session = await mongoose.startSession();
+            session.startTransaction();
+
             // validate user ID of requesting user
-            let userRequesting = await UserModel.findById(userIdOfRequestingUser).lean();
+            userIdOfRequestingUser = new mongoose.Types.ObjectId(userIdOfRequestingUser); // userId is extracted from a valid token, hence it is valid -- NOTE THIS
+            let userRequesting = await UserModel.findById(userIdOfRequestingUser).lean().session(session);
             if(!userRequesting){
+                await session.abortTransaction();
                 return {success: false, statusCode: 404, errors:["User sending the request is not registered"]};
             }
 
             // validate user ID of the user who's posts are to be fetched
-            let postOwner = await UserModel.findById(userIdToBeViewed).lean();
+            if(!mongoose.Types.ObjectId.isValid(userIdToBeViewed)){
+                await session.abortTransaction();
+                return {success:false, errors:["User ID for the user whose posts are to be viewed is invalid"], statusCode:400};
+            }
+            userIdToBeViewed = new mongoose.Types.ObjectId(userIdToBeViewed);
+            let postOwner = await UserModel.findById(userIdToBeViewed).lean().session(session);
             if(!postOwner){
+                await session.abortTransaction();
                 return {success: false, statusCode: 404, errors:["User id whose posts are to be viewed is invalid"]};
             }
 
             // get friendship status between the users
-            let friendsListForTheUserToBeViewed = await FriendsModel.findOne({ userId : new mongoose.Types.ObjectId(userIdToBeViewed) }).lean();
+            let friendsListForTheUserToBeViewed = await FriendsModel.findOne({ userId : userIdToBeViewed }).lean().session(session);
             if(!friendsListForTheUserToBeViewed){
+                await session.abortTransaction();
                 throw new ApplicationError(500,"Friends Object for an existing user could not be found");
             }
 
-            let friendShipObjectForTheTwoUsersInTheList = friendsListForTheUserToBeViewed.friends.find(friend => friend.friendId.equals(new mongoose.Types.ObjectId(userIdOfRequestingUser)));
+            let friendShipObjectForTheTwoUsersInTheList = friendsListForTheUserToBeViewed.friends.find(friend => friend.friendId.equals(userIdOfRequestingUser));
             
             let isFriend = !!friendShipObjectForTheTwoUsersInTheList;
 
@@ -253,7 +304,7 @@ export default class PostsRepository {
                 posts = await PostModel.aggregate([
                     {
                         $match : {
-                            userId : new mongoose.Types.ObjectId(userIdToBeViewed),
+                            userId : userIdToBeViewed,
                             visibility : "public"
                         }
                     },
@@ -267,13 +318,13 @@ export default class PostsRepository {
                             createdAt : -1 // sort by createdAt in descending order
                         }
                     }
-                ]);
+                ]).session(session);
             } else {
                 let friendshipLevel = friendShipObjectForTheTwoUsersInTheList.level;
                 posts = await PostModel.aggregate([
                     {
                         $match : {
-                            userId : new mongoose.Types.ObjectId(userIdToBeViewed),
+                            userId : userIdToBeViewed,
                             visibility : {
                                 $in : ["allFriends", friendshipLevel, "public"]
                             }
@@ -289,21 +340,46 @@ export default class PostsRepository {
                             createdAt : -1 // sort by createdAt in descending order
                         }
                     }
-                ]);
+                ]).session(session);
             }
 
+            // check if posts exist
+            if(!posts || posts.length === 0){
+                await session.abortTransaction();
+                return {success:true, statusCode:200, message:"No posts by the user yet", data:[]}
+            }
+
+            await session.commitTransaction();
             return {success:true, statusCode:200, message:"Posts for the user fetched successfully", data:posts}
+
         } catch(error) {
-            console.log("Error caught in the catch block -", error);
+
+            console.log("Error caught in getPostsForUser -", error);
+            if(session && session.inTransaction()){
+                await session.abortTransaction();
+            }
             throw error;
+
+        } finally {
+            if(session){
+                await session.endSession();
+            }
+
         }
     }
 
     async updatePostVisibility(userId, postId, newVisibilityOptions){
         let session;
-        userId = new mongoose.Types.ObjectId(userId);
-        postId = new mongoose.Types.ObjectId(postId);
         try{
+
+            // userId is extracted from a valid token, hence it is valid  NOTE THIS
+            if(!mongoose.Types.ObjectId.isValid(postId)){
+                return {success: false, statusCode: 400, errors:["Post ID is invalid"]};
+            }
+            userId = new mongoose.Types.ObjectId(userId);
+            postId = new mongoose.Types.ObjectId(postId);
+            
+            // start session
             session = await mongoose.startSession();
             session.startTransaction();
 
@@ -319,6 +395,11 @@ export default class PostsRepository {
             if(!post){
                 await session.abortTransaction();
                 return {success: false, statusCode: 404, errors:["Post does not exist"]};
+            }
+
+            //check if the user owns the post
+            if(!post.userId.equals(userId)){
+                return {success: false, errors:["User is not allowed to modufy the post"], statusCode:403};
             }
 
             // validate new visibility options
@@ -337,19 +418,23 @@ export default class PostsRepository {
             post.visibility = newVisibilityOptions;
 
             await post.save({session});
-
             await session.commitTransaction();
             return{success:true, message:"Visibility options updated successfully", statusCode:200, data:post}
+
         } catch(error){
+
             console.log("Error caught in 'updatePostVisibility' -", error);
             if(session && session.inTransaction()){
                 await session.abortTransaction();
             }
             throw error;
-        } finally{
+
+        } finally {
+
             if(session){
                 await session.endSession();
             }
+
         }
     }
 }

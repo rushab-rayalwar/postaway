@@ -15,7 +15,7 @@ export default class FeedController{
     async getPosts(req, res, next){
         let userId = req.user.userId;
         let { cursor, filter } = req.query; // cursor is an ObjectId for a post
-        let limit = Math.min(parseInt(req.query.limit) || 1, 7); // default 1, max 7
+        let limit = Math.min(parseInt(req.query.limit) || 3, 10); // default 3, max 10
 
         let response = await this.feedRepository.getFeed(userId, limit, cursor, filter);
         if(!response.success) {

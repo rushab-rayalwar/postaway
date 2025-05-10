@@ -9,6 +9,7 @@ import jwtAuthenticator from "../../middlewares/jwtAuthenticator.js";
 const usersRouter = express.Router();
 const usersController = new UsersController();
 
+//POST
 usersRouter.post("/signup", validateRegistration, (req,res,next)=> usersController.signUp(req,res,next));
 usersRouter.post("/signin", validateLogin, (req,res,next)=> usersController.signIn(req,res,next));
 usersRouter.post("/logout", (req,res,next)=>{usersController.logout(req,res,next)});

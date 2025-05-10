@@ -12,7 +12,7 @@ export default async function jwtAuthenticator(req, res, next) {
         return res.status(401).json({success:false, errors:["Access token required"]});
     }
     try {
-        let decoded = jwt.verify(token, process.env.JWT_SECRET);// The payload includes userId, email, and tokenVersion
+        let decoded = jwt.verify(token, process.env.JWT_SECRET);// The payload includes userId, userName, email, and tokenVersion
         req.user = decoded;  // attach the decoded token to the request object.
 
         let user = await UserModel.findById(decoded.userId);
