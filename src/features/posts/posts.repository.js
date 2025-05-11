@@ -24,7 +24,7 @@ export default class PostsRepository {
 
             // validate userId
             userId = new mongoose.Types.ObjectId(userId);
-            let user = await UserModel.findById(userId);
+            let user = await UserModel.findById(userId).lean().session(session);
             if(!user){
                 await session.abortTransaction();
                 return {success: false, statusCode: 404, errors:["User sending the request is not registered"]};
@@ -36,7 +36,7 @@ export default class PostsRepository {
                 return {success: false, statusCode: 400, errors:["Post ID is invalid"]};
             }
             postId = new mongoose.Types.ObjectId(postId); // convert to ObjectId
-            let post = await PostModel.findById(postId).lean();
+            let post = await PostModel.findById(postId).lean().session(session);
             if(!post){
                 await session.abortTransaction();
                 return {success: false, statusCode: 404, errors:["Post not found"]}
@@ -60,13 +60,15 @@ export default class PostsRepository {
             } else { // check if the visibility of the post includes the friendship level of the user with the user who posted
                 
                 // check if the user is a friend of the user who posted
-                let friendsListOfUserWhoPosted = await FriendsModel.findOne({ userId:userIdWhoPosted }).lean();
+                let friendsListOfUserWhoPosted = await FriendsModel.findOne({ userId:userIdWhoPosted }).lean().session(session);
                 if(!friendsListOfUserWhoPosted){
+                    await session.abortTransaction();
                     throw new ApplicationError(500, "Data inconsistency: Expected friends list for existing user is missing.") // this is an internal server error because, it is expected that a friends list document to exist for every existing user, even when the list is empty
                 }
 
                 let friendObject = friendsListOfUserWhoPosted.friends.find((f)=>f.friendId.equals(userId));
                 if(!friendObject){ // user is not a friend of the post owner
+                    await session.commitTransaction();
                     return {success:false, statusCode: 404, errors:["Post not found"]}  // although the post exists, it is not accessible to the user
                 }
 
@@ -78,15 +80,27 @@ export default class PostsRepository {
                         visibility : null // hide the visibility of the post
                     }
                 } else {
+                    await session.abortTransaction();
                     return {success:false, statusCode: 404, errors:["Post not found"]}
                 }
             }
 
+            await session.commitTransaction();
             return {success:true, statusCode:200, message:"Post retrieved successfully", data:data}
+
         } catch(error) {
 
             console.log("Error caught in getPostById -", error);
+            if( session && session.inTransaction() ){
+                await session.abortTransaction();
+            }
             throw error;
+
+        } finally {
+
+            if(session){
+                await session.endTransaction();
+            }
 
         }
     } 
@@ -238,11 +252,9 @@ export default class PostsRepository {
         } catch(err) {
 
             console.log("Error caught in createPost -", err);
-            
             if(session && session.inTransaction()){
                 await session.abortTransaction();
             }
-            
             if(err.name == "ValidationError"){
                 let errorsArray = Object.values(err.errors).map(e=>e.message); // NOTE this
                 return {
@@ -301,6 +313,7 @@ export default class PostsRepository {
 
             let posts; // posts to be returned
             if(!isFriend){
+
                 posts = await PostModel.aggregate([
                     {
                         $match : {
@@ -319,7 +332,9 @@ export default class PostsRepository {
                         }
                     }
                 ]).session(session);
+
             } else {
+
                 let friendshipLevel = friendShipObjectForTheTwoUsersInTheList.level;
                 posts = await PostModel.aggregate([
                     {
@@ -341,6 +356,7 @@ export default class PostsRepository {
                         }
                     }
                 ]).session(session);
+
             }
 
             // check if posts exist
@@ -361,6 +377,7 @@ export default class PostsRepository {
             throw error;
 
         } finally {
+            
             if(session){
                 await session.endSession();
             }

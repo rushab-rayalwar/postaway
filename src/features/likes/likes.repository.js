@@ -24,7 +24,7 @@ export default class LikesRepository {
 
             // validate userId
             userId = new mongoose.Types.ObjectId(userId); // convert to ObjectId, userId is always a valid ObjectId as it is coming from the auth middleware
-            let user = await UserModel.findById(userId).session(session);
+            let user = await UserModel.findById(userId).lean().session(session);
             if(!user){
                 await session.abortTransaction();
                 return {success:false, errors:["User id sending the request is invalid"], statusCode: 400};
@@ -36,7 +36,7 @@ export default class LikesRepository {
                 return {success:false, errors:["Post id is invalid"], statusCode: 400};
             }
             postId = new mongoose.Types.ObjectId(postId);
-            let post = await PostModel.findById(postId).session(session); // convert to ObjectId
+            let post = await PostModel.findById(postId).lean().session(session); // convert to ObjectId
             if(!post){
                 await session.abortTransaction();
                 return {success:false, errors:["Post could not be found"], statusCode: 400};
@@ -48,11 +48,12 @@ export default class LikesRepository {
 
             // check if the post is public or if the user is the owner of the post
             if(postVisibility.includes("public") || post.userId.equals(userId)){
+
                 postIsAccessible = true;
+
             } else {
 
-                // check friendship
-                let userWhoPosted = await UserModel.findById(post.userId);
+                // check friendship;
                 if(!userWhoPosted){
                     await session.abortTransaction();
                     throw new ApplicationError(500,"Inconsistent data - User for an existing post could not be found"); // every post must have an owner as a registered user, if the user deletes their account, the associated post must also be deleted
@@ -60,7 +61,7 @@ export default class LikesRepository {
 
                 // get friends list for the post owner
                 let userIdOfPostOwner = post.userId;
-                let friendsListForPostOwner = await FriendModel.findOne({userId : userIdOfPostOwner}).lean();
+                let friendsListForPostOwner = await FriendModel.findOne({userId : userIdOfPostOwner}).lean().session(session);
                 if(!friendsListForPostOwner) {
                     await session.abortTransaction();
                     throw new ApplicationError(500, "Friends list could not be found for an existing user");
@@ -112,7 +113,7 @@ export default class LikesRepository {
                             email : 1
                         }
                     }
-                ]).sess;
+                ]).session(session);
             }
 
             if(likes.length === 0){
@@ -221,16 +222,21 @@ export default class LikesRepository {
             } else {
                 return {success: false, message: "Post could not be found", statusCode: 404};
             }
+
         } catch(error){
-            console.log("Caught in catch block - error in toggling like for the post", error);
+
+            console.log("Caught in toggleLikeForPost", error);
             if(session){
                 await session.abortTransaction();
             }
             throw error;
+
         } finally {
+
             if(session){
                 await session.endSession();
             }
+            
         }
     }
     

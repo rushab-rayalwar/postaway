@@ -13,18 +13,24 @@ export default class FriendsRepository {
     }
 
     async getAllFriends(userId, level) {
+        let session;
         try{
+            //start session
+            session = new mongoose.startSession();
+            session.startTransaction();
 
             // check if the userId is valid
             userId = new mongoose.Types.ObjectId(userId); // convert to ObjectId
             let user = await UserModel.findById(userId);
             if(!user){
+                await session.abortTransaction();
                 return {success: false, errors:["User id sending the request is not registered"], statusCode: 400}
             }
 
             // check if the friends list exists for the user
             let friendsList = await FriendsModel.findOne({userId: userId});
             if(!friendsList){
+                await session.abortTransaction();
                 throw new ApplicationError(500,"Friend list list for an existing user could not be found");
             }
 
@@ -67,14 +73,18 @@ export default class FriendsRepository {
                             friendsList : 0
                         }
                     }
-                ]);
+                ]).session(session);
 
                 if(friendsDoc.length == 0){
+                    await session.commitTransaction();
                     return {success: true, data: [], statusCode: 200, message: "No friends found with the specified level"}
                 }
 
+                await session.commitTransaction();
                 return {success: true, data: friendsDoc, statusCode: 200, message: "Friends fetched successfully"}
+
             } else {
+
                 let friends = await FriendsModel.aggregate([
                     {
                         $match : {
@@ -86,33 +96,51 @@ export default class FriendsRepository {
                             friends : 1
                         }
                     }
-                ]);
+                ]).session(session);
                 if(friends.length == 0){
+                    await session.commitTransaction();
                     return {success: true, data: [], statusCode: 200, message: "No friends found"}
                 }
 
+                await session.commitTransaction();
                 return { success:true, data: friends, statusCode: 200}
             }
 
         } catch(error){
+
             console.error("Error caught in the catch block - "+err);
+            if(session && session.inTransaction()){
+                await session.abortTransaction();
+            }
             throw error;
+
+        } finally {
+
+            if(session){
+                await session.endTransaction();
+            }
+
         }
     }
 
     async getRequests(userId) {
+        let session;
         try{
+            session = new mongoose.startSession();
+            await session.startTransaction();
 
             // check if the userId is valid
             userId = new mongoose.Types.ObjectId(userId); // convert to ObjectId
-            let user = await UserModel.findById(userId);
+            let user = await UserModel.findById(userId).lean().session(session);
             if(!user){
+                await session.abortTransaction();
                 return {success: false, errors:["User id sending the request is invalid"], statusCode: 400};
             }
 
             // check if the friends list exists for the user
-            let friendsList = await FriendsModel.findOne({userId: userId});
+            let friendsList = await FriendsModel.findOne({userId: userId}).lean().session(session);
             if(!friendsList){
+                await session.abortTransaction();
                 throw new ApplicationError(500,"Friend list for an existing user could not be found");
             }
 
@@ -150,16 +178,29 @@ export default class FriendsRepository {
                         "requestFrom.sentOn" : "$requests.sentOn"
                     }
                 }
-            ]);
+            ]).session(session);
 
             if(requests.length == 0){
+                await session.commitTransaction();
                 return {success:true, statusCode200, data: [], message: "No friends yet"}
             }
+            await session.commitTransaction();
             return {success:true, statusCode: 200, data: requests, message:"Friends fetched successfully"};
 
         } catch(error){
-            console.error("Error caught in the catch block - "+error);
+
+            console.error("Error caught in getRequests - "+error);
+            if(session&&session.inTransaction()){
+                await session.abortTransaction();
+            }
             throw error;
+
+        } finally {
+
+            if(session){
+                await session.endSession();
+            }
+
         }
     }
 
@@ -211,6 +252,7 @@ export default class FriendsRepository {
                 // get friends' document for the user to whom the request is being sent and add the request to the requests array
                 let friendsListForFriend = await FriendsModel.findOne({userId : friendId}).session(session);
                 if(!friendsListForFriend){
+                    await session.abortTransaction();
                     throw new ApplicationError( 500, "Friends' list for an existing user could not be found" );
                 }
                 friendsListForFriend.requests.push(friendRequest); // add request to the friend's requests array
@@ -246,16 +288,21 @@ export default class FriendsRepository {
                 await session.commitTransaction();
                 return {success:true, statusCode: 200, message: "Friend removed successfully", data:null};
             }
+
         } catch(err){
+
             console.error("Error caught in toggleFriendship - "+err);
             if(session && session.inTransaction()){
                 await session.abortTransaction();
             }
             throw err;
+
         }finally{
+
             if(session){
                 await session.endSession();
             }
+
         }
     }
 
@@ -399,12 +446,11 @@ export default class FriendsRepository {
                 throw new ApplicationError(500, "Friends list not found for an existing user");
             }
 
-            // check if the friendId is in the friends list -- check if friends already
+            // check if the friendId is in the friends list of the user -- check if friends already
             let friendsAlready = true;
             let friendIndexInFriendsListForUser = friendsListForUser.friends.findIndex(f=>f.friendId.equals(friendId));
             if(friendIndexInFriendsListForUser < 0){
                 friendsAlready = false;
-                await session.abortTransaction();
             }
 
             // get friends list for the friend
@@ -421,6 +467,7 @@ export default class FriendsRepository {
                     await session.abortTransaction();
                     throw new ApplicationError(500,"Inconsistent data: User is not in the friend's friend-list, but the friend is in the user's friend-list");
                 }
+                await session.abortTransaction();
                 return {success: false, errors:["The user does not initially hold any level of friendship with the specified userId"], statusCode: 400}
             }
 
