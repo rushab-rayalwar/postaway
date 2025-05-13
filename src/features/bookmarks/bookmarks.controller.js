@@ -1,6 +1,6 @@
 
 // custom
-
+import BookmarksRepository from "./bookmarks.repository.js";
 
 export default class BookmarksController {
     constructor(){
