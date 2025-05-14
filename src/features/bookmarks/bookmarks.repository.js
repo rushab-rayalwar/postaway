@@ -15,7 +15,7 @@ export default class BookmarksRepository {
         let session;
         try {
                 session = new mongoose.startSession();
-            session.startTransaction();   
+                session.startTransaction();   
             
 
                 // validate userId
@@ -37,28 +37,57 @@ export default class BookmarksRepository {
                     return {success:false, errors:["Post does not exist"], statusCode:400}
                 }
 
-                // get the friend level for the user by the post owner
-            //     const postOwnerId = post.userId;
-            //     const friendShipObjectInPostOwnersFriendsList = await FriendsModel.aggregate([
-            //         {
-            //             $match : {
-            //                 userId : postOwnerId
-            //             }
-            //         },
-            //         {
-            //             $project : {
-            //                 friends : 1
-            //             }
-            //         },
-            //         {
-            //             $match : {
-            //                 "friends.friendId" : userId
-            //             }
-            //         }
-            //     ]).session(session); //  always returns an array 
-            // if(friendShipObjectInPostOwnersFriendsList.length == 0){
+                // check if the post is accessible to the user
+                let accessible = false;
+                if(post.visibility.includes("public")){
 
-            // }
+                    accessible = true;
+
+                } else {
+
+                    // check if user is a friend of the post owner with the friend level assigned to the user present in the post's visibility array
+                    const postOwnerId = post.userId;
+                    let friendshipObject = await FriendsModel.aggregate([
+                        {
+                            $match : {
+                                userId : postOwnerId
+                            }
+                        },
+                        {
+                            $project : {
+                                friends : 1
+                            }
+                        },
+                        {
+                            
+                        }
+                    ])
+                }
+
+
+
+
+                
+                const friendShipObjectInPostOwnersFriendsList = await FriendsModel.aggregate([
+                    {
+                        $match : {
+                            userId : postOwnerId
+                        }
+                    },
+                    {
+                        $project : {
+                            friends : 1
+                        }
+                    },
+                    {
+                        $match : {
+                            "friends.friendId" : userId
+                        }
+                    }
+                ]).session(session); //  always returns an array 
+            if(friendShipObjectInPostOwnersFriendsList.length == 0){
+                return {}
+            }
 
 
 
