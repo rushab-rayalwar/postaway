@@ -10,6 +10,10 @@ export const bookmarksSchema = new mongoose.Schema({
         type : mongoose.Schema.Types.ObjectId,
         required : [true,"Post Id of the post is required"],
         ref : "posts"
+    },
+    createdAt : {
+        type: Date,
+        default: new Date()
     }
 });
 
