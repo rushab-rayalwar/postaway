@@ -126,7 +126,87 @@ export default class BookmarksRepository {
     }
 
     async getBookmarks(userId){
-        
+        let session;
+        try{
+            session = mongoose.startSession();
+            session.startTransaction();
+
+            //validate userId
+            userId = new mongoose.Types.ObjectId(userId); // convert to objectID, the userId is always of ObjectId data typoe as it is extracted from the token
+            let user = await UserModle.findById(userId).lean().session(session);
+            if(!user){
+                await session.abortTransaction();
+                return {success:false, errors:["User ID for adding the bookmark is not registered"], statusCode:404}
+            }
+
+            // get bookmarks
+            let bookmarks = await BookmarkModel.find({userId:userId}).lean().session(session);
+            if(!bookmarks || bookmarks.length == 0){
+                await session.commitTransaction();
+                return {success:true, message:"No bookmarks found", statusCode:200}
+            }
+
+            // get posts
+            let postIds = bookmarks.map((bookmark)=>bookmark.postId);
+            let posts = await PostModel.find({_id:{$in:postIds}}).lean().session(session);
+            if(!posts || posts.length == 0){
+                await session.commitTransaction();
+                throw new ApplicationError(500,"Post object not found for bookmarks"); // Inconsistent data : The bookmarks must have a post object
+            }
+
+            // check if the posts are accessible to the user
+            let accessiblePosts = [];
+            for(let i=0; i<posts.length; i++){
+                let post = posts[i];
+                let accessible = false;
+                if(post.visibility.includes("public")){
+                    accessible = true;
+                } else {
+                    const postOwnerId = post.userId;
+                    const friendsListForPostOwner = await FriendsModel.findOne({userId:postOwnerId}).lean().session(session);
+                    if(!friendsListForPostOwner){
+                        await session.abortTransaction();
+                        throw new ApplicationError(500,"Friends List for post owner not found"); // Inconsistent data : Every existing user must have a friends list document
+                    }
+                    const userObjectInFriendsArrayOfPostOwner = friendsListForPostOwner.friends.find(()=>friendId.equals(userId));
+                    if(userObjectInFriendsArrayOfPostOwner){
+                        const friendLevel = userObjectInFriendsArrayOfPostOwner.level;
+                        if(post.visibility.includes(friendLevel)){
+                            accessible = true;
+                        } else {
+                            accessible = false;
+                        }
+                    } else {
+                        accessible = false;
+                    }
+                }
+
+                if(accessible){
+                    accessiblePosts.push(post);
+                }
+            }
+
+            await session.commitTransaction();
+            if(accessiblePosts.length == 0){
+                return {success:true, message:"No bookmarks found", statusCode:200}
+            }
+            return {success:true, data:accessiblePosts, statusCode:200};
+
+        } catch(error){
+
+            console.log("Error caught in getBookmarks -", error);
+            if(session && session.inTransaction() ){
+                await startSession.abortTransaction();
+            }
+            throw error; // error is handled by the app level error handler 
+
+        } finally {
+            
+            if(session){
+                await session.endSession();
+            }
+
+        }
     }
 
 }
