@@ -6,6 +6,7 @@ import { UserModel } from "../users/users.schema.js";
 import { PostModel } from "../posts/posts.schema.js";
 import FriendsModel from "../friends/friends.schema.js";
 import { ApplicationError } from "../../middlewares/errorHandler.middleware.js";
+import { BookmarkModel } from "./bookmarks.schema.js";
 
 export default class BookmarksRepository {
     constructor(){
@@ -125,7 +126,7 @@ export default class BookmarksRepository {
         }
     }
 
-    async getBookmarks(userId){
+    async getBookmarks(userId, cursor = new Date(), limit){
         let session;
         try{
             session = mongoose.startSession();
@@ -140,10 +141,32 @@ export default class BookmarksRepository {
             }
 
             // get bookmarks
-            let bookmarks = await BookmarkModel.find({userId:userId}).lean().session(session);
-            if(!bookmarks || bookmarks.length == 0){
-                await session.commitTransaction();
-                return {success:true, message:"No bookmarks found", statusCode:200}
+            // let bookmarks = await BookmarkModel.find({userId:userId}).lean().session(session);
+            // if(!bookmarks || bookmarks.length == 0){
+            //     await session.commitTransaction();
+            //     return {success:true, message:"No bookmarks found", statusCode:200}
+            // }
+            let bookmarks = await BookmarkModel.aggregate([
+                {
+                    $match : {
+                        userId : userId,
+                        createdAt : {
+                            $lt : cursor
+                        }
+                    }
+                },
+                {
+                    $sort : {
+                        createdAt : -1
+                    }
+                },
+                {
+                    $limit : limit
+                }
+            ]).session(session);
+
+            if(bookmarks.length == 0){
+                return {success:true, message:"No posts bookmarked by the user", statusCode: 200, data:[]}
             }
 
             // get posts
@@ -168,7 +191,7 @@ export default class BookmarksRepository {
                         await session.abortTransaction();
                         throw new ApplicationError(500,"Friends List for post owner not found"); // Inconsistent data : Every existing user must have a friends list document
                     }
-                    const userObjectInFriendsArrayOfPostOwner = friendsListForPostOwner.friends.find(()=>friendId.equals(userId));
+                    const userObjectInFriendsArrayOfPostOwner = friendsListForPostOwner.friends.find((f)=>f.friendId.equals(userId));
                     if(userObjectInFriendsArrayOfPostOwner){
                         const friendLevel = userObjectInFriendsArrayOfPostOwner.level;
                         if(post.visibility.includes(friendLevel)){
@@ -188,15 +211,18 @@ export default class BookmarksRepository {
 
             await session.commitTransaction();
             if(accessiblePosts.length == 0){
-                return {success:true, message:"No bookmarks found", statusCode:200}
+                return {success:true, message:"No bookmarks found", statusCode:200, data:[]}
             }
-            return {success:true, data:accessiblePosts, statusCode:200};
+
+            // set nextCursor
+            const nextCursor = accessiblePosts[accessiblePosts.length - 1];
+            return {success:true, data:{accessiblePosts, nextCursor}, statusCode:200, message:"Posts fetched"};
 
         } catch(error){
 
             console.log("Error caught in getBookmarks -", error);
             if(session && session.inTransaction() ){
-                await startSession.abortTransaction();
+                await session.abortTransaction();
             }
             throw error; // error is handled by the app level error handler 
 

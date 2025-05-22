@@ -28,6 +28,11 @@ export default class FeedRepository{
           return {success:false, errors:["User requesting the feed is not registererd"], statusCode : 404};
         }
 
+        // validate limit
+        if(limit <= 0){
+          return {success:false, errors:["Limit parameter should be greater than 0"], statusCode:400}
+        }
+
         // get friends-list for the user
         let friendsListForUser = await FriendsModel.findOne({userId : userId}).lean().session(session);
         if(!friendsListForUser){
@@ -102,13 +107,16 @@ export default class FeedRepository{
               visibility : 0
             }
           }
-        ]);
+        ]).session(session);
 
         await session.commitTransaction();
         
         if(postsFromFriends.length == 0){
           return {success:true, message:"No Posts to show", statusCode:200, data:[]}
         }
+
+        // set nextCursor
+        
 
         return {success : true, message:"Posts retrived successfully", statusCode:200, data:postsFromFriends}
 

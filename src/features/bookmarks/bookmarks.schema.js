@@ -17,4 +17,6 @@ export const bookmarksSchema = new mongoose.Schema({
     }
 });
 
+bookmarksSchema.index({userIndex : 1, createdAt : -1});
+
 export const BookmarkModel = mongoose.model("Bookmark",bookmarksSchema);
