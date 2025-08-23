@@ -58,7 +58,7 @@ export const postsSchema = new mongoose.Schema({
     },
     likesCount : {
         type: Number,
-        default: 0/969
+        default: 0
     },
     commentsCount : {
         type: Number,

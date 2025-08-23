@@ -21,6 +21,7 @@ export default async function uploadToCloudinary(req, res, next) {
                 },
                 (error, result)=>{
                     if(error) reject(error);
+                    console.log(result);
                     resolve(result);
                 }
             );

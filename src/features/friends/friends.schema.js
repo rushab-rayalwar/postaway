@@ -17,7 +17,7 @@ const friendsSchema = new mongoose.Schema({
             friendId: {
                 type: mongoose.Schema.Types.ObjectId,
                 ref: "User",
-                required: [true, "Specify the friendId"]
+                required: [true, "Specify the friendId"] 
             },
             level : {
                 type: String,

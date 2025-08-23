@@ -28,10 +28,10 @@ export default class FeedRepository{
           return {success:false, errors:["User requesting the feed is not registererd"], statusCode : 404};
         }
 
-        // validate limit
-        if(limit <= 0){
-          return {success:false, errors:["Limit parameter should be greater than 0"], statusCode:400}
-        }
+        // validate limit -- now this is handled in the controller
+        // if(limit <= 0){
+        //   return {success:false, errors:["Limit parameter should be greater than 0"], statusCode:400}
+        // }
 
         // get friends-list for the user
         let friendsListForUser = await FriendsModel.findOne({userId : userId}).lean().session(session);

@@ -2,6 +2,7 @@
 
 //libs
 import express from "express";
+import cors from "cors";
 
 //local
 import "./src/config/dotenv.config.js";
@@ -16,6 +17,11 @@ import commentsRouter from "./src/features/comments/comments.router.js";
 import feedRouter from "./src/features/feed/feed.router.js";
 
 //middlewares
+
+server.use(cors({                   // NOTE this
+    origin:process.env.FRONTEND_URL,
+    credentials:true
+}));
 server.use(express.json());
 server.use(express.urlencoded({extended:true}));
 server.use(cookieParser());
