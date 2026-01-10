@@ -13,7 +13,7 @@ export default class UsersController {
         this.usersRepository = new UsersRepository();
     }
     async signUp(req,res,next){
-        let userData = req.body; // the request body contains attributes like name, email, password
+        let userData = req.body; // the request body contains the attributes name, email and password
         let response = await this.usersRepository.signUp(userData);
         if(response.success){
             return res.status(response.statusCode).json({success:true, data:response.data, message:response.message});

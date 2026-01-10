@@ -22,7 +22,7 @@ export default class UsersRepository {
             session = await mongoose.startSession();
             session.startTransaction(0);
 
-            userData.password = await bcrypt.hash(userData.password, 10); // hashes password
+            userData.password = await bcrypt.hash(userData.password, 10); // password hashing   
 
             //make friends document for the new user
             let newUser = new UserModel(userData);

@@ -3,12 +3,12 @@
 //libs
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 
 //local
 import "./src/config/dotenv.config.js";
 import server from "./server.js";
 import { handleError } from "./src/middlewares/errorhandler.middleware.js";
-import cookieParser from "cookie-parser";
 
 import usersRouter from "./src/features/users/users.router.js";
 import friendsRouter from "./src/features/friends/friends.router.js";
@@ -35,4 +35,7 @@ server.use("/api/posts",postsRouter);
 server.use("/api/comments",commentsRouter);
 
 // middlewares
+server.use((req,res)=>{
+    res.status(404).json({success:false, errors:["Invalid URL"]})
+});
 server.use(handleError);
