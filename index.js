@@ -8,7 +8,7 @@ import cookieParser from "cookie-parser";
 //local
 import "./src/config/dotenv.config.js";
 import server from "./server.js";
-import { handleError } from "./src/middlewares/errorhandler.middleware.js";
+import { handleError } from "./src/middlewares/errorHandler.middleware.js";
 
 import usersRouter from "./src/features/users/users.router.js";
 import friendsRouter from "./src/features/friends/friends.router.js";
