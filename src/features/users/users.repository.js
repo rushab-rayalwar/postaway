@@ -37,7 +37,8 @@ export default class UsersRepository {
 
             let data = {
                 _id: newUser._id,
-                email: newUser.email
+                email: newUser.email,
+                name: newUser.name
             }
             return {success:true, data, statusCode:201, message:"User created successfully."}
             
