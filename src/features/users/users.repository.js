@@ -55,7 +55,7 @@ export default class UsersRepository {
                 return {success: false, errors:["User account already exists for the email id"], statusCode:409}
             }   
             console.error("Error caught in singnUp - "+error);
-            throw new ApplicationError(500,"Something went wrong!")
+            throw new ApplicationError(500,"Something went wrong")
 
         } finally {
 
