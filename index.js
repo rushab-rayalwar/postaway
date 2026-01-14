@@ -18,10 +18,6 @@ import feedRouter from "./src/features/feed/feed.router.js";
 
 //middlewares
 
-server.use(cors({                   // NOTE this
-    origin:[process.env.FRONTEND_URL, "http://localhost:3000"],
-    credentials:true
-}));
 server.use(express.json());
 server.use(express.urlencoded({extended:true}));
 server.use(cookieParser());
