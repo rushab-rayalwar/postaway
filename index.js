@@ -5,7 +5,6 @@ import express from "express";
 import cookieParser from "cookie-parser";
 
 //local
-import "./src/config/dotenv.config.js";
 import server from "./server.js";
 import { handleError } from "./src/middlewares/errorHandler.middleware.js";
 

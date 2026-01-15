@@ -1,3 +1,5 @@
+import "./src/config/dotenv.config.js";
+
 //third-party
 import express from "express";
 import cors from "cors";
