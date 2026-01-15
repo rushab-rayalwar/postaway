@@ -10,6 +10,8 @@ import { connectToMongoDB } from "./src/config/mongoose.config.js"
 const server = express();
 const port = process.env.PORT || 3000;
 
+console.log(process.env.FRONTEND_URL);
+
 server.use(cors({                   // NOTE this
     origin:[process.env.FRONTEND_URL, "http://localhost:3000"],
     credentials:true
