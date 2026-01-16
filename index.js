@@ -16,7 +16,7 @@ import feedRouter from "./src/features/feed/feed.router.js";
 
 //middlewares
 
-server.use(express.json());
+server.use(express.json());  
 server.use(express.urlencoded({extended:true}));
 server.use(cookieParser());
 

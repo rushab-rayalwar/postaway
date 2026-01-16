@@ -184,11 +184,11 @@ export default class PostsRepository {
 
     async createPost(userId, imageUrl, imagePublicId, content, visibility){ // transactions are not used here as, the post is created in a single collection and there are no other operations that need to be rolled back in case of failure. Also, the post creation is not dependent on any other operation.
         
-        let vis = visibility || ["allFriends"]; // "visibility" is a space-separated string provided via query param.
+        let vis = visibility || ["public"]; // "visibility" is a space-separated string provided via query param.
                                             // If not provided, default to ["everyone"]. Convert to array and validate.
         const validVisibilityOptions = ["public","allFriends", "general","close_friend","inner_circle"];
 
-        if(vis != "allFriends") { // the user has provided the visibility options
+        if(vis != "public") { // the user has provided the visibility options
             vis = vis.trim().split(" ");
             for(let option of vis){
                 if(!validVisibilityOptions.includes(option)){
@@ -225,6 +225,7 @@ export default class PostsRepository {
             // make new post object and update the database
             let newPost;
             if(imageUrl && imagePublicId) { // image is provided
+                console.log(imageUrl, imagePublicId);
                 newPost = {
                     userId : userId,
                     userName: userName,

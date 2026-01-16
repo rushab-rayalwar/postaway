@@ -4,7 +4,7 @@ import BookmarksRepository from "./bookmarks.repository.js";
 
 export default class BookmarksController {
     constructor(){
-        this.bookmarksRepository = new BookmarksRepository;
+        this.bookmarksRepository = new BookmarksRepository();
     }
 
     async addBookmark(req,res,next){
