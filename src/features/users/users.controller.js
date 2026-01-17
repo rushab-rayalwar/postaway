@@ -40,10 +40,16 @@ export default class UsersController {
                 }, 
                 process.env.JWT_SECRET, 
                 {expiresIn:"24h"});
-            return res.cookie("jwt", token, { // NOTE this:
-                httpOnly: true,                     // prevents JS access (more secure)
-                secure: process.env.NODE_ENV === "production", // HTTPS only in production
-                sameSite: "none",                    // "none" is for development, "lax" for production
+            // return res.cookie("jwt", token, { // NOTE this:
+            //     httpOnly: true,                     // prevents JS access (more secure)
+            //     secure: process.env.NODE_ENV === "production", // HTTPS only in production
+            //     sameSite: "none",                    // "none" is for development, "lax" for production
+            //     maxAge: 24 * 60 * 60 * 1000,
+            //   }).status(response.statusCode).json({success:true, data:response.data, message:response.message, token:token});
+            return res.cookie("jwt", token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                sameSite: process.env.NODE_ENV === "production" ? "lax" : "none",
                 maxAge: 24 * 60 * 60 * 1000,
               }).status(response.statusCode).json({success:true, data:response.data, message:response.message, token:token});
         } else {
