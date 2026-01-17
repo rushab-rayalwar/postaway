@@ -54,7 +54,8 @@ export const postsSchema = new mongoose.Schema({
     // },
     recentComment : {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Comment"
+        ref: "Comment",
+        default : null
     },
     likesCount : {
         type: Number,
