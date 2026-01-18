@@ -48,8 +48,8 @@ export default class UsersController {
             //   }).status(response.statusCode).json({success:true, data:response.data, message:response.message, token:token});
             return res.cookie("jwt", token, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: process.env.NODE_ENV === "production" ? "lax" : "none",
+                secure: true,
+                sameSite: "none",
                 maxAge: 24 * 60 * 60 * 1000,
               }).status(response.statusCode).json({success:true, data:response.data, message:response.message, token:token});
         } else {
