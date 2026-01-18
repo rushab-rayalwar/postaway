@@ -14,6 +14,8 @@ import postsRouter from "./src/features/posts/posts.router.js";
 import commentsRouter from "./src/features/comments/comments.router.js";
 import feedRouter from "./src/features/feed/feed.router.js";
 
+server.set('trust proxy',1); // trusts the Render proxy when in production environment
+
 //middlewares
 
 server.use(express.json());  
