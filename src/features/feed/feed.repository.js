@@ -14,15 +14,16 @@ export default class FeedRepository{
 
     }
     async getFeed(userId, limit, cursor = new Date(), filter){ // the filter feature is not implemented yet
-      let session;
+      // let session;
       try{
         
-        session = await mongoose.startSession();
-        session.startTransaction();
+        // session = await mongoose.startSession();
+        // session.startTransaction();
 
         // validate user
         userId = new mongoose.Types.ObjectId(userId);
-        let user = await UserModel.findById(userId).lean().session(session);
+        // let user = await UserModel.findById(userId).lean().session(session);
+        let user = await UserModel.findById(userId).lean();
         if(!user){
           await session.abortTransaction();
           return {success:false, errors:["User requesting the feed is not registererd"], statusCode : 404};
@@ -34,7 +35,8 @@ export default class FeedRepository{
         // }
 
         // get friends-list for the user
-        let friendsListForUser = await FriendsModel.findOne({userId : userId}).lean().session(session);
+        // let friendsListForUser = await FriendsModel.findOne({userId : userId}).lean().session(session);
+        let friendsListForUser = await FriendsModel.findOne({userId : userId}).lean();
         if(!friendsListForUser){
           await session.abortTransaction();
           throw new ApplicationError(500,"User's friends list could not be found");
@@ -51,10 +53,10 @@ export default class FeedRepository{
             throw new ApplicationError(500,"Friends list for a friend of the user could not be found"); // since the userid of the friend is present in the firends array of the user, the friend's account exists
           }
           
-          let userObjectInTheFriendsArray = friendsListForFriend.friends.find(friendObject=>friendObject.friendId.equals(userId));
+          let userObjectInTheFriendsArray = friendsListForFriend.friends.find(friendObject=>friendObject.friendId.equals(userId)); // NOTE THIS : .equals method
           if(!userObjectInTheFriendsArray){
             await session.abortTransaction();
-            throw ApplicationError(500,"User's object is absent in friend's friends-list");
+            throw new ApplicationError(500,"User's object is absent in friend's friends-list");
           }
           let friendshipLevel = userObjectInTheFriendsArray.level;
 
@@ -107,9 +109,10 @@ export default class FeedRepository{
               visibility : 0
             }
           }
-        ]).session(session);
+        // ]).session(session);
+        ]);
 
-        await session.commitTransaction();
+        // await session.commitTransaction();
         
         if(postsFromFriends.length == 0){
           return {success:true, message:"No Posts to show", statusCode:200, data:[]}
@@ -123,16 +126,16 @@ export default class FeedRepository{
       } catch(error) {
 
         console.log("Error in getFeed: ", error);
-        if(session && session.inTransaction()){
-          await session.abortTransaction();
-        }
+        // if(session && session.inTransaction()){
+        //   await session.abortTransaction();
+        // }
         throw error;
 
       } finally {
 
-        if(session){
-          session.endSession();
-        }
+        // if(session){
+        //   session.endSession();
+        // }
         
       }
     }
