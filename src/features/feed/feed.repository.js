@@ -13,7 +13,7 @@ export default class FeedRepository{
     constructor(){
 
     }
-    async getFeed(userId, limit, cursor = new Date(), filter){ // the filter feature is not implemented yet
+    async getFeed(userId, limit, cursor, filter){ // the filter feature is not implemented yet
       // let session;
       try{
         

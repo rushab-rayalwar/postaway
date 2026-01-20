@@ -14,9 +14,12 @@ export default class FeedController{
 
     async getPosts(req, res, next){
         let userId = req.user.userId;
-        let { cursor, filter } = req.query; // cursor is an ObjectId for a post
+        let { filter } = req.query;
+        const cursor = req.query.cursor 
+            ? new Date(req.query.cursor)
+            : new Date("2100-01-01"); // cursor is an ObjectId for a post
         let limit = parseInt(req.query.limit);
-        limit = Math.max(1, Math.min(limit || 2, 10)); // default 2, max 10. If the parameter provided is negative, the limit is taken as 1
+        limit = Math.max(1, Math.min(limit || 3, 10)); // default 2, max 10. If the parameter provided is negative, the limit is taken as 1
 
         let response = await this.feedRepository.getFeed(userId, limit, cursor, filter);
         if(!response.success) {
