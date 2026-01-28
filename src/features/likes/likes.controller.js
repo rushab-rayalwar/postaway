@@ -3,7 +3,7 @@
 // libs
 
 // custom
-import LikesRepository from "./likes.repository"
+import LikesRepository from "./likes.repository.js"
 
 export default class LikesController {
     constructor(){
@@ -23,7 +23,7 @@ export default class LikesController {
     async toggleLike(req,res,next){
         let userId = req.user.userId;
         let postId = req.params.postId;
-        let response = await this.likesRepository.toggleLike(userId,postId);
+        let response = await this.likesRepository.toggleLikeForPost(userId, postId);
         if(response.success){
             return res.status(response.statusCode).json({ success : true, message : response.message, data : response.data });
         } else {

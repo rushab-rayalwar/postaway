@@ -51,4 +51,4 @@ const friendsSchema = new mongoose.Schema({
 
 const FriendsModel = mongoose.model("FriendsList",friendsSchema);
 
-export default FriendsModel;
+export {FriendsModel};

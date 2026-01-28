@@ -4,7 +4,7 @@
 import mongoose from "mongoose";
 
 //custom
-import FriendsModel from "./friends.schema.js";
+import {FriendsModel} from "./friends.schema.js";
 import { ApplicationError } from "../../middlewares/errorHandler.middleware.js";
 import { UserModel } from "../users/users.schema.js";
 

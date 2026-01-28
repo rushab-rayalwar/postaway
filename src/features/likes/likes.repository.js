@@ -7,7 +7,7 @@ import mongoose from "mongoose";
 import { UserModel } from "../users/users.schema.js";
 import { PostModel } from "../posts/posts.schema.js";
 import { LikeModel } from "./likes.schema.js";
-import { FriendModel } from "../friends/friends.schema.js"
+import { FriendsModel } from "../friends/friends.schema.js"
 import { ApplicationError } from "../../middlewares/errorHandler.middleware.js";
 
 export default class LikesRepository {
@@ -61,7 +61,7 @@ export default class LikesRepository {
 
                 // get friends list for the post owner
                 let userIdOfPostOwner = post.userId;
-                let friendsListForPostOwner = await FriendModel.findOne({userId : userIdOfPostOwner}).lean().session(session);
+                let friendsListForPostOwner = await FriendsModel.findOne({userId : userIdOfPostOwner}).lean().session(session);
                 if(!friendsListForPostOwner) {
                     await session.abortTransaction();
                     throw new ApplicationError(500, "Friends list could not be found for an existing user");
@@ -135,7 +135,7 @@ export default class LikesRepository {
         } finally {
 
             if(session){
-                session.endTransaction();
+                session.endSession();
             }
 
         }
@@ -181,7 +181,7 @@ export default class LikesRepository {
 
                 // get friends list for the post owner
                 let userIdOfPostOwner = new mongoose.Types.ObjectId(post.userId);
-                let friendsListForPostOwner = await FriendModel.findOne({userId : userIdOfPostOwner}).lean().session(session);
+                let friendsListForPostOwner = await FriendsModel.findOne({userId : userIdOfPostOwner}).lean().session(session);
                 if(!friendsListForPostOwner) {
                     throw new ApplicationError(500, "Friends list could not be found for an existing user");
                 }

@@ -7,7 +7,7 @@ import bcrypt from "bcrypt";
 //custom
 import {UserModel} from "./users.schema.js";
 import { ApplicationError } from "../../middlewares/errorHandler.middleware.js"; 
-import FriendsModel from "../friends/friends.schema.js";
+import {FriendsModel} from "../friends/friends.schema.js";
 
 export default class UsersRepository {
     constructor(){

@@ -6,7 +6,7 @@ import mongoose from "mongoose";
 // custom
 import { UserModel } from "../users/users.schema.js";
 import { PostModel } from "../posts/posts.schema.js";
-import FriendsModel from "../friends/friends.schema.js";
+import {FriendsModel} from "../friends/friends.schema.js";
 import { ApplicationError } from "../../middlewares/errorHandler.middleware.js"
 
 export default class FeedRepository{

@@ -7,7 +7,7 @@ import mongoose from "mongoose";
 import { CommentModel } from "./comments.schema.js";
 import { PostModel } from "../posts/posts.schema.js";
 import { UserModel } from "../users/users.schema.js";
-import FriendsModel from "../friends/friends.schema.js";
+import {FriendsModel} from "../friends/friends.schema.js";
 import { ApplicationError } from "../../middlewares/errorHandler.middleware.js";
 
 export default class CommentsRepository {
