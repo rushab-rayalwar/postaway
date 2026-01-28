@@ -149,8 +149,9 @@ export default class LikesRepository {
 
             // validate userId
             userId = new mongoose.Types.ObjectId(userId); // convert to ObjectId
-            let user = await UserModel.findById(userId).session(session);
+            let user = await UserModel.findById(userId);
             if(!user){
+                await session.abortTransaction();
                 return {success:false, errors:["User id sending the request is invalid"], statusCode: 400};
             }
 
@@ -161,6 +162,7 @@ export default class LikesRepository {
             postId = new mongoose.Types.ObjectId(postId); // convert to ObjectId
             let post = await PostModel.findById(postId).session(session);
             if(!post){
+                await session.abortTransaction();
                 return {success:false, errors:["Post could not be found"], statusCode: 400};
             }
 
@@ -176,6 +178,7 @@ export default class LikesRepository {
                 // get post owner
                 let userWhoPosted = await UserModel.findById(post.userId).lean().session(session);
                 if(!userWhoPosted){
+                    await session.abortTransaction();
                     throw new ApplicationError(500,"Inconsistent data - User for an existing post could not be found"); // every post must have an owner as a registered user, if the user deletes their account, the associated post must also be deleted
                 }
 
@@ -183,12 +186,14 @@ export default class LikesRepository {
                 let userIdOfPostOwner = new mongoose.Types.ObjectId(post.userId);
                 let friendsListForPostOwner = await FriendsModel.findOne({userId : userIdOfPostOwner}).lean().session(session);
                 if(!friendsListForPostOwner) {
+                    await session.abortTransaction();
                     throw new ApplicationError(500, "Friends list could not be found for an existing user");
                 }
 
                 // check if the user is a friend of the post owner
                 let friendObjectInFriendsListOfPostOwner = friendsListForPostOwner.friends.find(friend=>friend.friendId.equals(userId));
                 if(!friendObjectInFriendsListOfPostOwner){ // the post owner and the user are not friends
+                    await session.abortTransaction();
                     return {success: false, message: "Post could not be found", statusCode: 404}; // for security, the user should not be able to see the likes of a post they are not friends with
                 }
 
@@ -197,6 +202,7 @@ export default class LikesRepository {
                 if(postVisibility.includes(friendshipLevel)){
                     postIsAccessible = true;
                 } else {
+                    await session.abortTransaction();
                     return {success: false, message: "Post could not be found", statusCode: 404};
                 }
             }
@@ -206,8 +212,9 @@ export default class LikesRepository {
                 let like = await LikeModel.findOne({forPost : postId, byUser : userId}).session(session);
                 if(like){ // unlike the post
                     await LikeModel.deleteOne({forPost : postId, byUser : userId}).session(session);
-                    post.likesCount -= 1;
+                    post.likesCount = Math.max(0, post.likesCount - 1);
                     await post.save({session});
+                    await session.commitTransaction();
                     return {success: true, message:"Post unliked", statusCode : 200};
                 } else { // like the post
                     let newLike = new LikeModel({
@@ -217,9 +224,12 @@ export default class LikesRepository {
                     await newLike.save({session});
                     post.likesCount += 1;
                     await post.save({session});
+
+                    await session.commitTransaction();
                     return {success: true, message:"Post liked", statusCode : 200};
                 }
             } else {
+                await session.abortTransaction();
                 return {success: false, message: "Post could not be found", statusCode: 404};
             }
 
@@ -239,5 +249,4 @@ export default class LikesRepository {
             
         }
     }
-    
 }

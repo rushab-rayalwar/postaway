@@ -22,4 +22,6 @@ export const likesSchema = new mongoose.Schema({
     timestamps : true
 });
 
+likesSchema.index({forPost:1, byUser:1}, {unique:true}); // NOTE THIS : avoids race condition by making sure that at the most only a single like exists for a pair of uesrID and postID
+
 export const LikeModel = mongoose.model("Like",likesSchema);
