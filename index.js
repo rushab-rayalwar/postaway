@@ -14,6 +14,7 @@ import postsRouter from "./src/features/posts/posts.router.js";
 import commentsRouter from "./src/features/comments/comments.router.js";
 import feedRouter from "./src/features/feed/feed.router.js";
 import likesRouter from "./src/features/likes/likes.router.js";
+import bookmarksRouter from "./src/features/bookmarks/bookmarks.router.js";
 
 server.set('trust proxy',1); // trust the Render proxy when in production environment
 
@@ -31,6 +32,7 @@ server.use("/api/friends",friendsRouter);
 server.use("/api/posts",postsRouter);
 server.use("/api/comments",commentsRouter);
 server.use("/api/likes", likesRouter);
+server.use("/api/saved-posts", bookmarksRouter);
 
 // middlewares
 server.use((req,res)=>{

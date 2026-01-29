@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 //custom
 import { UserModel } from "../users/users.schema.js";
 import { PostModel } from "../posts/posts.schema.js";
-import FriendsModel from "../friends/friends.schema.js";
+import {FriendsModel} from "../friends/friends.schema.js";
 import { ApplicationError } from "../../middlewares/errorHandler.middleware.js";
 import { BookmarkModel } from "./bookmarks.schema.js";
 
@@ -16,13 +16,13 @@ export default class BookmarksRepository {
     async addBookmark(userId, postId){
         let session;
         try {
-                session = new mongoose.startSession();
+                session = await mongoose.startSession();
                 session.startTransaction();   
             
 
                 // validate userId
                 userId = new mongoose.Types.ObjectId(userId); // convert to objectID, the userId is always of ObjectId data typoe as it is extracted from the token
-                let user = await mongoose.findById(userId).lean().session(session);
+                let user = await UserModel.findById(userId).lean().session(session);
                 if(!user){
                     await session.abortTransaction();
                     return {success:false, errors:["User ID for adding the bookmark is not registered"], statusCode:404}
@@ -40,9 +40,16 @@ export default class BookmarksRepository {
                     return {success:false, errors:["Post does not exist"], statusCode:400}
                 }
 
+                // check if already bookmarked
+                let removedBookmark = await BookmarkModel.findOneAndDelete({userId : userId, postId : postId});
+                if(removedBookmark){
+                    await session.commitTransaction();
+                    return {success:true, message:"Bookmark removed successfully", statusCode:200}
+                }
+
                 // check if the post is accessible to the user
                 let accessible = false;
-                if(post.visibility.includes("public")){
+                if(post.visibility.includes("public") || post.userId.equals(userId)){
 
                     accessible = true;
 
@@ -55,7 +62,7 @@ export default class BookmarksRepository {
                         await session.abortTransaction();
                         throw new ApplicationError(500,"Friends List for post owner not found"); // Inconsistent data : Every existing user must have a friends list document
                     }
-                    const userObjectInFriendsArrayOfPostOwner = friendsListForPostOwner.friends.find(()=>friendId.equals(userId));
+                    const userObjectInFriendsArrayOfPostOwner = friendsListForPostOwner.friends.find((f)=>f.friendId.equals(userId));
                     if(userObjectInFriendsArrayOfPostOwner){
 
                         const friendLevel = userObjectInFriendsArrayOfPostOwner.level;
@@ -65,7 +72,7 @@ export default class BookmarksRepository {
                             accessible = false;
                         }
 
-                    } else {
+                    } else { // the user requesting is not the friend of the post owner
                         accessible = false;
                     }
                 }
@@ -82,7 +89,7 @@ export default class BookmarksRepository {
                 })
                 await newBookmark.save();
                 await session.commitTransaction();
-                return {success:true, data:newBookmark, statusCode:200};
+                return {success:true, message:"Post bookmarked successfully", statusCode:200};
 
 
                 
@@ -129,23 +136,18 @@ export default class BookmarksRepository {
     async getBookmarks(userId, cursor = new Date(), limit){
         let session;
         try{
-            session = mongoose.startSession();
+            session = await mongoose.startSession();
             session.startTransaction();
 
             //validate userId
             userId = new mongoose.Types.ObjectId(userId); // convert to objectID, the userId is always of ObjectId data typoe as it is extracted from the token
-            let user = await UserModle.findById(userId).lean().session(session);
+            let user = await UserModel.findById(userId).lean().session(session);
             if(!user){
                 await session.abortTransaction();
                 return {success:false, errors:["User ID for adding the bookmark is not registered"], statusCode:404}
             }
 
             // get bookmarks
-            // let bookmarks = await BookmarkModel.find({userId:userId}).lean().session(session);
-            // if(!bookmarks || bookmarks.length == 0){
-            //     await session.commitTransaction();
-            //     return {success:true, message:"No bookmarks found", statusCode:200}
-            // }
             let bookmarks = await BookmarkModel.aggregate([
                 {
                     $match : {
@@ -174,7 +176,7 @@ export default class BookmarksRepository {
             let posts = await PostModel.find({_id:{$in:postIds}}).lean().session(session);
             if(!posts || posts.length == 0){
                 await session.commitTransaction();
-                throw new ApplicationError(500,"Post object not found for bookmarks"); // Inconsistent data : The bookmarks must have a post object
+                throw new ApplicationError(500,"Post object(s) not found for bookmarks"); // Inconsistent data : The bookmarks must have a post object
             }
 
             // check if the posts are accessible to the user
@@ -182,7 +184,7 @@ export default class BookmarksRepository {
             for(let i=0; i<posts.length; i++){
                 let post = posts[i];
                 let accessible = false;
-                if(post.visibility.includes("public")){
+                if(post.visibility.includes("public") || post.userId.equals(userId)){
                     accessible = true;
                 } else {
                     const postOwnerId = post.userId;
@@ -205,7 +207,7 @@ export default class BookmarksRepository {
                 }
 
                 if(accessible){
-                    accessiblePosts.push(post);
+                    accessiblePosts.push({...post, visibility:null}); // hide visibility info
                 }
             }
 
@@ -215,7 +217,7 @@ export default class BookmarksRepository {
             }
 
             // set nextCursor
-            const nextCursor = accessiblePosts[accessiblePosts.length - 1];
+            const nextCursor = accessiblePosts[accessiblePosts.length - 1].createdAt;
             return {success:true, data:{accessiblePosts, nextCursor}, statusCode:200, message:"Posts fetched"};
 
         } catch(error){

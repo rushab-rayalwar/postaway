@@ -21,8 +21,10 @@ export default class BookmarksController {
     async getBookmarks(req,res,next){
         let userId = req.user.userId;
         let limitQuery = parseInt(req.query.limit);
-        let limit = Math.min( limitQuery || 2 , 10 );
-        let cursor = req.query.cursor;
+        let limit = Math.min( limitQuery || 3 , 10 ); // NOTE THIS
+        const cursor = req.query.cursor 
+            ? new Date(req.query.cursor)
+            : new Date("2100-01-01"); // cursor is an ObjectId for a post
         let response = await this.bookmarksRepository.getBookmarks(userId, cursor, limit);
         if(response.success){
             return res.status(response.statusCode).json({success:response.success, message:response.message, data:response.data});
