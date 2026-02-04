@@ -16,7 +16,7 @@ export default class FeedRepository{
 
     }
     async getFeed(userId, limit, cursor, filter){ // the filter feature is not implemented yet
-      // let session;
+      let session;
       try{
         
         session = await mongoose.startSession();
