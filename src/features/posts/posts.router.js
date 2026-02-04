@@ -15,7 +15,7 @@ const postsController = new PostsController();
 
 //GET
 postsRouter.get("/", jwtAuthenticator, (req,res,next)=>postsController.getAllUserPosts(req,res,next)); //get posts for the user sending the request
-postsRouter.get("/userPosts/:userIdOfPostsOwner", jwtAuthenticator, (req,res,next)=>postsController.getPostsForUser(req,res,next)); // get posts for a user
+postsRouter.get("/userPosts/:userId", jwtAuthenticator, (req,res,next)=>postsController.getPostsForUser(req,res,next)); // get posts for a user
 postsRouter.get("/:postId", jwtAuthenticator, (req,res,next)=>postsController.getPostById(req,res,next)); // get a particular post
 
 //POST

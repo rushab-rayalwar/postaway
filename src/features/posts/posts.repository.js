@@ -8,6 +8,8 @@ import { UserModel } from "../users/users.schema.js";
 import { ApplicationError } from "../../middlewares/errorHandler.middleware.js";
 import { PostModel } from "./posts.schema.js";
 import {FriendsModel} from "../friends/friends.schema.js";
+import { LikeModel } from "../likes/likes.schema.js";
+import { BookmarkModel } from "../bookmarks/bookmarks.schema.js";
 
 
 export default class PostsRepository {
@@ -66,7 +68,7 @@ export default class PostsRepository {
                     throw new ApplicationError(500, "Data inconsistency: Expected friends list for existing user is missing.") // this is an internal server error because, it is expected that a friends list document to exist for every existing user, even when the list is empty
                 }
 
-                let friendObject = friendsListOfUserWhoPosted.friends.find((f)=>f.friendId.equals(userId));
+                let friendObject = friendsListOfUserWhoPosted.friends.find((f)=>f.friendId.equals(userId)).lean().session(session);
                 if(!friendObject){ // user is not a friend of the post owner
                     await session.commitTransaction();
                     return {success:false, statusCode: 404, errors:["Post not found"]}  // although the post exists, it is not accessible to the user
@@ -84,6 +86,13 @@ export default class PostsRepository {
                     return {success:false, statusCode: 404, errors:["Post not found"]}
                 }
             }
+
+            // add info about if the user requesting the post has liked ans saved the post
+            let likedByUser = await LikeModel.exists({byUser : userId, forPost : postId}).session(session); // NOTE THIS : findOne method could have been used instead of exists, but exists method is fater and relevant to this purpose
+            let bookmarkedByUser = await BookmarkModel.exists({userId:userId, postId:postId}).session(session);
+
+            data.isLiked = !!likedByUser;
+            data.isBookmarked = !! bookmarkedByUser;
 
             await session.commitTransaction();
             return {success:true, statusCode:200, message:"Post retrieved successfully", data:data}
@@ -162,8 +171,22 @@ export default class PostsRepository {
                 return {success:true, statusCode:200, message:"No posts by the user yet", data:[]}
             }
 
+            // check which posts are liked and saved by the user
+            let postIds = posts.map(p=>p._id);
+            let likes = await LikeModel.find({byUser : userId, forPost : {$in:postIds}}).lean().session(session);
+            let bookMarks = await BookmarkModel.find({userId : userId, postId : {$in:postIds}}).lean().session(session);
+
+            let likesSet = new Set(likes.map(l=>String(l.forPost)));
+            let bookmarksSet = new Set(bookMarks.map(b=>String(b.postId)));
+
+            let resultData = posts.map(p=>{
+                let isLiked = likesSet.has(String(p._id));
+                let isBookmarked = bookmarksSet.has(String(p._id));
+                return {...p, isLiked, isBookmarked}
+            });
+
             await session.commitTransaction();
-            return {success:true, statusCode:200, message:"Posts retrived successfully", data:posts}
+            return {success:true, statusCode:200, message:"Posts retrived successfully", data:resultData}
 
         } catch (error) {
 
@@ -366,8 +389,22 @@ export default class PostsRepository {
                 return {success:true, statusCode:200, message:"No posts by the user yet", data:[]}
             }
 
+            // check which posts the user has liked and saved
+            let postIds = posts.map(p=>p._id);
+            let likes = await LikeModel.find({byUser : userIdOfRequestingUser, forPost : {$in:postIds}}).lean().session(session);
+            let bookMarks = await BookmarkModel.find({userId : userIdOfRequestingUser, postId : {$in:postIds}}).lean().session(session);
+
+            let likesSet = new Set(likes.map(l=>String(l.postId)));
+            let bookMarksSet = new Set(bookMarks.map(b=>String(b.postId)));
+
+            let resultData = posts.map(p=>{
+                let isLiked = likesSet.has(String(p._id));
+                let isBookmarked = bookMarksSet.has(String(p._id));
+                return {...p, isLiked, isBookmarked}
+            });
+
             await session.commitTransaction();
-            return {success:true, statusCode:200, message:"Posts for the user fetched successfully", data:posts}
+            return {success:true, statusCode:200, message:"Posts for the user fetched successfully", data:resultData}
 
         } catch(error) {
 

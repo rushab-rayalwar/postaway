@@ -55,7 +55,7 @@ export default class PostsController {
     
     async getPostsForUser(req,res,next){
         let userIdOfRequestingUser = req.user.userId;
-        let userIdOfPostsOwner = req.params.userIdOfPostsOwner;
+        let userIdOfPostsOwner = req.params.userId;
 
         if(userIdOfRequestingUser == userIdOfPostsOwner){ // if the user is requesting their own posts, redirect to the getAllUserPosts endpoint
             return res.redirect("/api/posts/");
