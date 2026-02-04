@@ -7,7 +7,9 @@ import mongoose from "mongoose";
 import { UserModel } from "../users/users.schema.js";
 import { PostModel } from "../posts/posts.schema.js";
 import {FriendsModel} from "../friends/friends.schema.js";
-import { ApplicationError } from "../../middlewares/errorHandler.middleware.js"
+import { ApplicationError } from "../../middlewares/errorHandler.middleware.js";
+import { LikeModel } from "../likes/likes.schema.js";
+import { BookmarkModel } from "../bookmarks/bookmarks.schema.js";
 
 export default class FeedRepository{
     constructor(){
@@ -118,10 +120,26 @@ export default class FeedRepository{
           return {success:true, message:"No Posts to show", statusCode:200, data:[]}
         }
 
+        // check if the user has liked / saved any posts
+        let postIds = postsFromFriends.map(p=>p._id);
+        let likes = await LikeModel.find({byUser : userId, forPost:{$in:postIds}}).lean().session(session);
+        let bookmarks = await BookmarkModel.find({userId : userId, postId:{$in:postIds}}).lean().session(session);
+
+        let likesSet = new Set(likes.map(l=>String(l.forPost)));
+        let bookmarksSet = new Set(bookmarks.map(b=>String(b.postId)));
+
+        let resultData = postsFromFriends.map(p=>{
+          return {
+            ...p,
+            isLiked : likesSet.has(String(p._id)),
+            isBookmarked : bookmarksSet.has(String(p._id))
+          }
+        });
+
         // set nextCursor
         
 
-        return {success : true, message:"Posts retrived successfully", statusCode:200, data:postsFromFriends}
+        return {success : true, message:"Posts retrived successfully", statusCode:200, data:resultData}
 
       } catch(error) {
 
