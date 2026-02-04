@@ -19,8 +19,8 @@ export default class FeedRepository{
       // let session;
       try{
         
-        // session = await mongoose.startSession();
-        // session.startTransaction();
+        session = await mongoose.startSession();
+        session.startTransaction();
 
         // validate user
         userId = new mongoose.Types.ObjectId(userId);
