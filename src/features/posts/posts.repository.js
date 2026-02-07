@@ -108,7 +108,7 @@ export default class PostsRepository {
         } finally {
 
             if(session){
-                await session.endTransaction();
+                await session.endSession();
             }
 
         }
