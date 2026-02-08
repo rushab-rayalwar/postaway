@@ -14,85 +14,87 @@ export default class CommentsRepository {
     constructor(){
 
     }
+
     async getCommentsForPost(postId, userId) {
-        let session;
+        // let session;
         try{
 
-            session = await mongoose.startSession();
-            session.startTransaction();
+            // session = await mongoose.startSession();
+            // session.startTransaction();
 
             // validate user
             userId = new mongoose.Types.ObjectId(userId);
-            let user = await UserModel.findById(userId).lean().session(session);
+            // let user = await UserModel.findById(userId).lean().session(session);
+            let user = await UserModel.findById(userId).lean()
             if(!user){
-                await session.abortTransaction();
+                // await session.abortTransaction();
                 throw new ApplicationError(500, "User ID sending the request not found in the DB");
             }
 
             //validate post ID
-            if( !mongoose.Types.ObjectId(postId).isValid() ) {
-                await session.abortTransaction();
-                return {success: false, statusCode: 400, errors:["Invalid post ID"]}
+            if (!mongoose.Types.ObjectId.isValid(postId)) {
+                // await session.abortTransaction();
+                return {
+                    success: false,
+                    statusCode: 400,
+                    errors: ["Invalid post ID"]
+                };
             }
             postId = new mongoose.Types.ObjectId(postId);
-            let post = await PostModel.findById(postId).lean().session(session);
+            // let post = await PostModel.findById(postId).lean().session(session);
+            let post = await PostModel.findById(postId).lean();
             if(!post){
-                await session.abortTransaction();
+                // await session.abortTransaction();
+                console.log("Post really not found in the posts model");
                 return {success: false, statusCode: 404, errors:["Post not found"]} 
             }
 
-            //get friendsList for post author
-            let friendsListForAuthor = await FriendsModel.findOne({ userId : post.userId }).lean().session(session);
-            if(!friendsListForAuthor){
-                await session.abortTransaction();
-                throw new ApplicationError(500,"FriendsList for a user whos post exists cannot be found"); // this is an internal server error as, the post exists, and the userId is valid, so the friends list should exist too
-            }
-
-            //get friendship level between the user sending the request and the post author
-            let friendObjectInFriendsList = friendsListForAuthor.friends.find(f=>f.friendId.equals(userId));
-            if(!friendObjectInFriendsList){
-
-                // the user and post author not friends, check if the post is visible to everyone
-                let accessible = post.visibility.includes("public");
-                if(accessible){
-                    let comments = await CommentModel.find({postId : postId});
-                    await session.commitTransaction();
-                    return {success: true, statusCode: 200, message:"Comments fetched successfully", data:comments}
-                } else {
-                    await session.abortTransaction();
-                    return {success: false, statusCode: 404, message:"Post not found"} // to not expose the presence of the post to the user, we return a 404 error instead of 403
+            let accessible = false; // this variable decides if the post is accessible to the user
+            // check if the user is the owner of the post
+            if(post.userId.equals(userId) || post.visibility.includes("public")){
+                accessible = true;
+            } else {
+                //get friendsList for post author
+                // let friendsListForAuthor = await FriendsModel.findOne({ userId : post.userId }).lean().session(session);
+                let friendsListForAuthor = await FriendsModel.findOne({ userId : post.userId }).lean();
+                if(!friendsListForAuthor){
+                    // await session.abortTransaction();
+                    throw new ApplicationError(500,"FriendsList for a user whose post exists cannot be found"); // this is an internal server error as, the post exists, and the userId is valid, so the friends list should exist too
                 }
-
+                
+                //get friendship level between the user sending the request and the post author
+                let friendObjectInFriendsList = friendsListForAuthor.friends.find(f=>f.friendId.equals(userId));
+                if(!friendObjectInFriendsList){
+                    accessible = false;
+                    console.log("Friendship dosent exist");
+                } else {
+                    let friendshipLevel = friendObjectInFriendsList.level;
+                    accessible = post.visibility.includes(friendshipLevel);
+                }
             }
-            let friendshipLevel = friendObjectInFriendsList.level;
 
             //check if the post and hence its comments are accessible to the user and then return
-            let accessible = post.visibility.includes(friendshipLevel) || post.visibility.includes("public");
             if(accessible){
                 let comments = await CommentModel.find({ postId : postId });
-                await session.commitTransaction();
+                // await session.commitTransaction();
                 return {success: true, statusCode: 200, message:"Comments fetched successfully", data:comments}
             } else {
-                await session.abortTransaction();
+                // await session.abortTransaction();
                 return {success: false, statusCode: 404, message:"Post not found"}
             }
-
         } catch(error) {
-
             console.log("Error caught in the getCommentsForPost -", error);
-            if(session && session.inTransaction()){
-                await session.abortTransaction();
-            }
+            // if(session && session.inTransaction()){
+            //     await session.abortTransaction();
+            // }
             throw error;
-
         } finally {
-
-            if(session){
-                await session.endSession();
-            }
-
+            // if(session){
+            //     await session.endSession();
+            // }
         }
     }
+
     async postComment(userId, postId, content){
         let session;
         try{
@@ -111,13 +113,13 @@ export default class CommentsRepository {
             let userName = user.name;
 
             //validate comment
-            if(content === "" || !content){
+            if( !content || content === "" ){
                 await session.abortTransaction();
                 return {success: false, statusCode: 400, errors:["Comment content cannot be empty"]};
             }
 
             //validate post id and update the comments count
-            if( !mongoose.Types.ObjectId(postId).isValid() ) {
+            if( !mongoose.Types.ObjectId.isValid(postId) ) {
                 await session.abortTransaction();
                 return {success: false, statusCode: 400, errors:["Invalid post ID"]};
             }
@@ -140,10 +142,7 @@ export default class CommentsRepository {
             await newComment.save({session});
 
             //update and save post
-            post.commentsCount ++;
-
-            // post.recentComment = new mongoose.Types.ObjectId(newComment._id)
-            await post.save(session);
+            await PostModel.updateOne({_id : postId}, {$inc : {commentsCount:1}}, {session})
             
             await session.commitTransaction();
             return {success:true, statusCode:201, message:"Comment posted successfully", data:newComment}
@@ -162,7 +161,6 @@ export default class CommentsRepository {
                 await session.endSession();
             }
         }
-
     }
 
     async updateComment(userId, commentId, updatedContent) {

@@ -44,14 +44,6 @@ export const postsSchema = new mongoose.Schema({
         ],
         default: ["allFriends"]
     },
-    // visibility: {
-    //     type: [String],
-    //     enum: {
-    //         values: ["public", "allFriends", "general", "close_friend", "inner_circle"],
-    //         message: "Invalid visibility parameter"
-    //     },
-    //     default: ["allFriends"]
-    // },
     recentComment : {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Comment",
