@@ -91,31 +91,6 @@ export default class BookmarksRepository {
                 await session.commitTransaction();
                 return {success:true, message:"Post bookmarked successfully", statusCode:200};
 
-
-                
-            //     const friendShipObjectInPostOwnersFriendsList = await FriendsModel.aggregate([
-            //         {
-            //             $match : {
-            //                 userId : postOwnerId
-            //             }
-            //         },
-            //         {
-            //             $project : {
-            //                 friends : 1
-            //             }
-            //         },
-            //         {
-            //             $match : {
-            //                 "friends.friendId" : userId
-            //             }
-            //         }
-            //     ]).session(session); //  always returns an array 
-            // if(friendShipObjectInPostOwnersFriendsList.length == 0){
-            //     return {}
-            // }
-
-
-
         } catch(error){
 
             console.log("Error caught in addBookmark -", error);

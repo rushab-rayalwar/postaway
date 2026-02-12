@@ -12,6 +12,17 @@ export default class UsersController {
     constructor(){
         this.usersRepository = new UsersRepository();
     }
+
+    async auth(req,res,next){
+        let userId = req.user.userId;
+        let response = await this.usersRepository.getuserDetails(userId);
+        if(response.success){ 
+            return res.status(response.statusCode).json({success:true, data:response.data, message:response.message});
+        } else {
+            return res.status(response.statusCode).json({success:false, errors:response.errors});
+        }
+    }
+
     async signUp(req,res,next){
         let userData = req.body; // the request body contains the attributes name, email and password
         let response = await this.usersRepository.signUp(userData);
@@ -40,12 +51,6 @@ export default class UsersController {
                 }, 
                 process.env.JWT_SECRET, 
                 {expiresIn:"24h"});
-            // return res.cookie("jwt", token, { // NOTE this:
-            //     httpOnly: true,                     // prevents JS access (more secure)
-            //     secure: process.env.NODE_ENV === "production", // HTTPS only in production
-            //     sameSite: "none",                    // "none" is for development, "lax" for production
-            //     maxAge: 24 * 60 * 60 * 1000,
-            //   }).status(response.statusCode).json({success:true, data:response.data, message:response.message, token:token});
             return res.cookie("jwt", token, {
                 httpOnly: true,
                 secure: true,
@@ -53,7 +58,7 @@ export default class UsersController {
                 maxAge: 24 * 60 * 60 * 1000,
               }).status(response.statusCode).json({success:true, data:response.data, message:response.message, token:token});
         } else {
-            return res.status(response.statusCode).json({success:false, errors:[response.errors]});
+            return res.status(response.statusCode).json({success:false, errors:response.errors});
         }
     }
 
@@ -69,7 +74,7 @@ export default class UsersController {
             res.clearCookie("jwt");
             return res.status(200).json({success:true, message:response.message, data:response.data});
         } else {
-            return res.status(response.statusCode).json({success:false, errors:[response.errors]});
+            return res.status(response.statusCode).json({success:false, errors:response.errors});
         }
     }
 }
