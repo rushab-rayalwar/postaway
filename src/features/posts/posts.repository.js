@@ -212,9 +212,9 @@ export default class PostsRepository {
         const validVisibilityOptions = ["public", "general","close_friend","inner_circle"];
 
         if(vis != "public") { // the user has provided the visibility options
-            vis = vis.trim().split(" ");
             for(let option of vis){
                 if(!validVisibilityOptions.includes(option)){
+                    console.log(vis);
                     return {success: false, statusCode: 400, errors:["Visibility options are invalid"]}
                 }
             }

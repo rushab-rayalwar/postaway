@@ -41,6 +41,12 @@ export default class PostsController {
         const content = req.body.content;
         let visibility = req.body.visibility;
 
+        if (Array.isArray(visibility)) {
+            visibility = visibility[0];
+        }
+
+        visibility = JSON.parse(visibility);
+
         if(!visibility || visibility == ""){
             visibility = null;
         }
