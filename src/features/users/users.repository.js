@@ -20,7 +20,7 @@ export default class UsersRepository {
             if(!user){
                 throw new ApplicationError(500, "User object for a valid JWT does not exist");
             };
-            return {success:true, data:user, message:"User details fetched successfully.", statusCode:200}
+            return {success:true, data:{...user, password:null}, message:"User details fetched successfully.", statusCode:200}
         } catch(error){ 
             console.error("Error caught in getuserDetails - "+error);
             throw new ApplicationError(500,"Something went wrong!");
