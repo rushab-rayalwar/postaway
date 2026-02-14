@@ -76,7 +76,7 @@ export default class PostsRepository {
 
                 // check and match friendship level
                 let level = friendObject.level;
-                if(postVisibility.includes(level) || postVisibility.includes("allFriends")) {
+                if(postVisibility.includes(level)) {
                     data = {
                         ...post,
                         visibility : null // hide the visibility of the post
@@ -137,7 +137,7 @@ export default class PostsRepository {
 
                 level = level.trim().replace(/\s+/g, " ").split(" ");
                 for(let l of level){
-                    if(!["public","allFriends", "general","close_friend","inner_circle"].includes(l)){
+                    if(!["public", "general","close_friend","inner_circle"].includes(l)){
                         await session.abortTransaction();
                         return {success:false, errors:["Invalid level parameter"], statusCode:400};
                     }
@@ -209,7 +209,7 @@ export default class PostsRepository {
         
         let vis = visibility || ["public"]; // "visibility" is a space-separated string provided via query param.
                                             // If not provided, default to ["everyone"]. Convert to array and validate.
-        const validVisibilityOptions = ["public","allFriends", "general","close_friend","inner_circle"];
+        const validVisibilityOptions = ["public", "general","close_friend","inner_circle"];
 
         if(vis != "public") { // the user has provided the visibility options
             vis = vis.trim().split(" ");
@@ -365,7 +365,7 @@ export default class PostsRepository {
                         $match : {
                             userId : userIdToBeViewed,
                             visibility : {
-                                $in : ["allFriends", friendshipLevel, "public"]
+                                $in : [ friendshipLevel, "public"]
                             }
                         }
                     },
@@ -462,7 +462,7 @@ export default class PostsRepository {
                 await session.abortTransaction();
                 return {success:false, statusCode:400, errors:["Visibility options are not provided"]}
             }
-            const  validVisibilityOptions = ["public","allFriends", "general","close_friend","inner_circle"];
+            const  validVisibilityOptions = ["public", "general","close_friend","inner_circle"];
             newVisibilityOptions = newVisibilityOptions.trim().replace(/\s+/g," ").split(" ");
             for(let option of newVisibilityOptions){
                 if(!validVisibilityOptions.includes(option)){
