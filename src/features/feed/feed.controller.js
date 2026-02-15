@@ -17,7 +17,7 @@ export default class FeedController{
         let { filter } = req.query;
         const cursor = req.query.cursor 
             ? new Date(req.query.cursor)
-            : new Date("2100-01-01"); // cursor is an ObjectId for a post
+            : new Date("2100-01-01"); // cursor is the date object of the last post prenent in the feed in the front end. Posts posted before that date need to be sent
         let limit = parseInt(req.query.limit);
         limit = Math.max(1, Math.min(limit || 3, 10)); // default 2, max 10. If the parameter provided is negative, the limit is taken as 1
 
