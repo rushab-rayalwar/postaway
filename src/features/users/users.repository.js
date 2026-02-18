@@ -14,6 +14,77 @@ export default class UsersRepository {
         
     }
 
+    async getUsers(searchQuery = null, page = 1, limit = 5) {
+        try {
+            page = parseInt(page);
+            limit = parseInt(limit);
+            const skip = (page - 1) * limit;
+    
+            // Function to escape regex special characters
+            const escapeRegex = (text) => {
+                return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // replaces all the risky characters with \[matched character], $& belongs specifically to the replace function and represents the matched text
+            };
+    
+            let matchStage = {};
+    
+            // Apply search if query is provided
+            if (searchQuery && searchQuery.trim()) {
+                const safeQuery = escapeRegex(searchQuery.trim());
+    
+                matchStage = {
+                    name: {
+                        $regex: safeQuery,
+                        $options: "i" // case insensitive
+                    }
+                };
+            }
+    
+            const result = await UserModel.aggregate([
+                { $match: matchStage },
+    
+                {
+                    $facet: {
+                        users: [
+                            { $sort: { name: 1 } },      // alphabetical order
+                            { $skip: skip },
+                            { $limit: limit },
+                            {
+                                $project: {
+                                    name: 1,
+                                    email: 1
+                                }
+                            }
+                        ],
+    
+                        totalCount: [
+                            { $count: "count" }
+                        ]
+                    }
+                }
+            ]);
+    
+            const users = result[0].users;
+            const total = result[0].totalCount[0]?.count || 0;
+    
+            return {
+                success: true,
+                statusCode: 200,
+                data: {
+                    users,
+                    page,
+                    limit,
+                    total,
+                    totalPages: Math.ceil(total / limit)
+                },
+                message: "Users fetched successfully."
+            };
+    
+        } catch (error) {
+            console.error("Error caught in getUsers - " + error);
+            throw new ApplicationError(500, "Something went wrong!");
+        }
+    }
+     
     async getuserDetails(userId){
         try{
             let user = await UserModel.findById(userId).lean();

@@ -13,6 +13,18 @@ export default class UsersController {
         this.usersRepository = new UsersRepository();
     }
 
+    async getUsers(req,res,next){
+        let searchQuery = req.query.search;
+        let page = req.query.page;
+        let limit = req.query.limit;
+        let response = await this.usersRepository.getUsers(searchQuery, page, limit);
+        if(response.success){
+            return res.status(response.statusCode).json({success:true, data:response.data, message:response.message});
+        } else {
+            return res.status(response.statusCode).json({success:false, errors:response.errors});
+        }
+    }
+
     async auth(req,res,next){
         let userId = req.user.userId;
         let response = await this.usersRepository.getuserDetails(userId);
