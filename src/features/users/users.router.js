@@ -5,6 +5,8 @@ import express from "express";
 import UsersController from "./users.controller.js";
 import { validateLogin, validateRegistration } from "../../middlewares/validator.js";
 import jwtAuthenticator from "../../middlewares/jwtAuthenticator.js";
+import upload from "../../config/multer.config.js";
+import uploadToCloudinary from "../../middlewares/cloudinaryUploader.js";
 
 const usersRouter = express.Router();
 const usersController = new UsersController();
@@ -17,5 +19,8 @@ usersRouter.post("/signup", validateRegistration, (req,res,next)=> usersControll
 usersRouter.post("/signin", validateLogin, (req,res,next)=> usersController.signIn(req,res,next));
 usersRouter.post("/logout", (req,res,next)=>{usersController.logout(req,res,next)});
 usersRouter.post("/logout-all-devices", jwtAuthenticator, (req,res,next)=>{usersController.logoutAllDevices(req,res,next)});
+
+// PATCH
+usersRouter.patch("/updateProfilePicture", jwtAuthenticator, upload.single('image'), uploadToCloudinary, (req,res,next)=>usersController.updateProfilePicture(rqe,res,next));
 
 export default usersRouter;

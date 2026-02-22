@@ -24,6 +24,10 @@ const usersSchema = new mongoose.Schema({
     friendsList : {
         type : mongoose.Schema.Types.ObjectId,
         ref: "FriendsList"
+    },
+    profilePictureURL : {
+        type : String,
+        default : "https://res.cloudinary.com/dgk58bntg/image/upload/v1771784138/dcddc_oq2qeo.jpg"
     }
 },{ collection : "users", timeStamps : true });
 

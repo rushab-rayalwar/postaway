@@ -14,6 +14,17 @@ export default class UsersRepository {
         
     }
 
+    async updateProfilePicture(userId, url){
+        try{
+            userId = new mongoose.Types.ObjectId(userId);
+            let updatedUserObject = await UserModel.findOneAndUpdate({_id : userId}, { profilePictureURL : url }, { new:true });
+            return {success:true, data:{ profilePictureURL : updatedUserObject.profilePictureURL }, message:"Profile picture updated successfully.", statusCode:200}
+        } catch(error){
+            console.error("Error caught in updateProfilePicture - "+error);
+            throw new ApplicationError(500,"Something went wrong!")
+        }
+    }
+
     async getUsers(searchQuery = null, page = 1, limit = 5) {
         try {
             page = parseInt(page);

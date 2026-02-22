@@ -10,14 +10,25 @@ import jwt from "jsonwebtoken";
 
 export default class UsersController { 
     constructor(){
-        this.usersRepository = new UsersRepository();
+        this.repository = new UsersRepository();
+    }
+
+    async updateProfilePicture(req,res){
+        let url = req.image.public_id;
+        let userId = req.user.userId;
+        let response = await this.repository.updateProfilePicture(userId, url);
+        if(response.success){
+            return res.status(response.statusCode).json({success:true, data:response.data, message:response.message});
+        } else {
+            return res.status(response.statusCode).json({success:false, errors:response.errors});
+        }
     }
 
     async getUsers(req,res,next){
         let searchQuery = req.query.search;
         let page = req.query.page;
         let limit = req.query.limit;
-        let response = await this.usersRepository.getUsers(searchQuery, page, limit);
+        let response = await this.repository.getUsers(searchQuery, page, limit);
         if(response.success){
             return res.status(response.statusCode).json({success:true, data:response.data, message:response.message});
         } else {
@@ -27,7 +38,7 @@ export default class UsersController {
 
     async auth(req,res,next){
         let userId = req.user.userId;
-        let response = await this.usersRepository.getuserDetails(userId);
+        let response = await this.repository.getuserDetails(userId);
         if(response.success){ 
             return res.status(response.statusCode).json({success:true, data:response.data, message:response.message});
         } else {
@@ -37,7 +48,7 @@ export default class UsersController {
 
     async signUp(req,res,next){
         let userData = req.body; // the request body contains the attributes name, email and password
-        let response = await this.usersRepository.signUp(userData);
+        let response = await this.repository.signUp(userData);
         if(response.success){
             return res.status(response.statusCode).json({success:true, data:response.data, message:response.message});
         } else {
@@ -50,7 +61,7 @@ export default class UsersController {
         if( !userData || !userData.email || !userData.password){ // NOTE the order of the checks, it is important to check for userData first
             return res.status(400).json({success:false, errors:["Email and password are required."]});
         }
-        let response = await this.usersRepository.signIn(userData);
+        let response = await this.repository.signIn(userData);
         if(response.success){
             let user = response.data;
             let userTokenVersion = user.tokenVersion;
@@ -81,7 +92,7 @@ export default class UsersController {
     
     async logoutAllDevices(req,res,next){
         let userId = req.user.userId;
-        let response = await this.usersRepository.logoutAllDevices(userId);
+        let response = await this.repository.logoutAllDevices(userId);
         if(response.success){
             res.clearCookie("jwt");
             return res.status(200).json({success:true, message:response.message, data:response.data});
